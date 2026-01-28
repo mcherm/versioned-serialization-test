@@ -6,14 +6,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.jsonSchema.JsonSchema;
 import com.fasterxml.jackson.module.jsonSchema.JsonSchemaGenerator;
-import com.github.victools.jsonschema.generator.CustomDefinition;
+import com.github.victools.jsonschema.generator.Option;
 import com.github.victools.jsonschema.generator.OptionPreset;
-import com.github.victools.jsonschema.generator.SchemaGenerationContext;
 import com.github.victools.jsonschema.generator.SchemaGenerator;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaVersion;
 import com.github.victools.jsonschema.module.jackson.JacksonModule;
+import com.github.victools.jsonschema.module.jackson.JacksonOption;
 import com.mcherm.versionedserialization.objects.contents.Currency;
 
 import java.util.Collections;
@@ -107,7 +107,7 @@ public class SerializationUtil {
         try {
             final var configBuilder = new SchemaGeneratorConfigBuilder(
                     SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON)
-                    .with(new JacksonModule());
+                    .with(Option.DEFINITIONS_FOR_ALL_OBJECTS);
             // Tell Victools about the custom serialization for Currency objects
             configBuilder.forFields().withTargetTypeOverridesResolver(
                     field -> {

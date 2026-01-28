@@ -54,11 +54,11 @@ public class MoneyStuffV1Test {
         final String expected = """
             {"$schema":"https://json-schema.org/draft/2020-12/schema",\
             "$defs":{\
+            "Money(CAD)":{"type":"object","properties":{"amount":{"type":"number"},"currency":{"type":"string"}}},\
             "Money(USD)":{"type":"object","properties":{"amount":{"type":"number"},"currency":{"type":"string"}}}\
             },\
             "type":"object","properties":{\
-            "balanceCa":{"type":"object","properties":{"amount":{"type":"number"},\
-            "currency":{"type":"string"}}},\
+            "balanceCa":{"$ref":"#/$defs/Money(CAD)"},\
             "balanceUs":{"$ref":"#/$defs/Money(USD)"},\
             "debtUs":{"$ref":"#/$defs/Money(USD)"},\
             "mainCurrency":{"type":"string"}\
