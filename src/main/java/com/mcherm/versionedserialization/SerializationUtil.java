@@ -55,6 +55,20 @@ public class SerializationUtil {
     }
 
     /**
+     * Reads a JSON string into arbitrary objects (JsonNode).
+     *
+     * @param json the JSON source, as a String
+     * @return the parsed JsonNode for the root of the document
+     */
+    public static JsonNode deserializeAsNode(final String json) {
+        try {
+            return objectMapper.readTree(json);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to read JSON", e);
+        }
+    }
+
+    /**
      * This generates a JSON Schema schema to document the serialization format
      * used if instances of the given class are serialized using JSON.
      *
