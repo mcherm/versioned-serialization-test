@@ -17,7 +17,7 @@ import com.github.victools.jsonschema.module.jackson.JacksonModule;
  */
 public class SerializationUtil {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
     /**
      * This serializes an object to JSON, returning the JSON as a string.

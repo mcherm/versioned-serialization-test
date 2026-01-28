@@ -1,7 +1,10 @@
 package com.mcherm.versionedserialization;
 
+import com.mcherm.versionedserialization.objects.CustomSerializingV1;
 import com.mcherm.versionedserialization.objects.SimpleV1;
 import org.junit.jupiter.api.Test;
+
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,7 +38,38 @@ public class SerializationUtilTest {
     public void testGenerateSchemaSimpleV1Victools() {
         final String schema = SerializationUtil.generateSchemaVictools(SimpleV1.class);
         final String expected = """
-            {"type":"object","id":"urn:jsonschema:com:mcherm:versionedserialization:objects:SimpleV1","properties":{"s":{"type":"string"},"i":{"type":"integer"}}}""";
+            {"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"i":{"type":"integer"},"s":{"type":"string"}}}""";
+        assertEquals(expected, schema);
+    }
+
+    @Test
+    public void testRoundTripCustomSerializingV1() {
+        final CustomSerializingV1 obj = new CustomSerializingV1("public_value", "getter_value", Optional.of("optional_value"));
+
+        final String serialized = SerializationUtil.serialize(obj);
+        final String expected = """
+            {"simplePublic":"public_value","simpleGetter":"getter_value","optionalValue":"optional_value"}""";
+        assertEquals(expected, serialized);
+
+        final CustomSerializingV1 deserialized = SerializationUtil.deserialize(serialized, CustomSerializingV1.class);
+        assertEquals("public_value", deserialized.simplePublic);
+        assertEquals("getter_value", deserialized.getSimpleGetter());
+        assertEquals(Optional.of("optional_value"), deserialized.getOptionalValue());
+    }
+
+    @Test
+    public void testGenerateSchemaCustomSerializingV1Jackson() {
+        final String schema = SerializationUtil.generateSchemaJackson(CustomSerializingV1.class);
+        final String expected = """
+            {"type":"object","id":"urn:jsonschema:com:mcherm:versionedserialization:objects:CustomSerializingV1","properties":{"simplePublic":{"type":"string"},"simpleGetter":{"type":"string"},"optionalValue":{"type":"string"}}}""";
+        assertEquals(expected, schema);
+    }
+
+    @Test
+    public void testGenerateSchemaCustomSerializingV1Victools() {
+        final String schema = SerializationUtil.generateSchemaVictools(CustomSerializingV1.class);
+        final String expected = """
+            {"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"optionalValue":{"type":["string","null"]},"simpleGetter":{"type":"string"},"simplePublic":{"type":"string"}}}""";
         assertEquals(expected, schema);
     }
 }
