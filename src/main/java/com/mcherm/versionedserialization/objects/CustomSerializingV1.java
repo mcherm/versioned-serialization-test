@@ -1,5 +1,6 @@
 package com.mcherm.versionedserialization.objects;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -10,6 +11,7 @@ public class CustomSerializingV1 {
     public String simplePublic;
     private final String simpleGetter;
     private final Optional<String> optionalValue;
+    private final List<String> listOfStrings;
 
     /**
      * Private constructor for use by deserialization tools only. This leaves the
@@ -18,13 +20,20 @@ public class CustomSerializingV1 {
     private CustomSerializingV1() {
         this.simpleGetter = null;
         this.optionalValue = null;
+        this.listOfStrings = null;
     }
 
     /** All-fields constructor. */
-    public CustomSerializingV1(String simplePublic, String simpleGetter, Optional<String> optionalValue) {
+    public CustomSerializingV1(
+            String simplePublic,
+            String simpleGetter,
+            Optional<String> optionalValue,
+            List<String> listOfStrings
+    ) {
         this.simplePublic = simplePublic;
         this.simpleGetter = simpleGetter;
         this.optionalValue = optionalValue;
+        this.listOfStrings = listOfStrings;
     }
 
     /** Getter for private field. */
@@ -35,6 +44,11 @@ public class CustomSerializingV1 {
     /** Getter for a field. */
     public Optional<String> getOptionalValue() {
         return optionalValue;
+    }
+
+    /** Getter for a field. */
+    public List<String> getListOfStrings() {
+        return listOfStrings;
     }
 
 }
