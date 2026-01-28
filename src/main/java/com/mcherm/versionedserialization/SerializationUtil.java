@@ -2,6 +2,8 @@ package com.mcherm.versionedserialization;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.module.jsonSchema.JsonSchema;
+import com.fasterxml.jackson.module.jsonSchema.JsonSchemaGenerator;
 
 /**
  * Contains public static methods for serialization and deserialization.
@@ -21,6 +23,23 @@ public class SerializationUtil {
             return objectMapper.writeValueAsString(object);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to serialize object", e);
+        }
+    }
+
+    /**
+     * This generates a JSON Schema schema to document the serialization format
+     * used if instances of the given class are serialized using JSON.
+     *
+     * @param clazz the class which will be serialized
+     * @return the JSON Schema as a String
+     */
+    public static String generateSchema(final Class<?> clazz) {
+        try {
+            final JsonSchemaGenerator schemaGen = new JsonSchemaGenerator(objectMapper);
+            final JsonSchema schema = schemaGen.generateSchema(clazz);
+            return objectMapper.writeValueAsString(schema);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to generate schema", e);
         }
     }
 
