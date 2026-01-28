@@ -32,7 +32,7 @@ public class Money<Cur extends Currency> {
     ) {
         return new Money<>(new BigDecimal(amount), currency);
     }
-    
+
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof Money<?> money)) return false;

@@ -1,16 +1,22 @@
 package com.mcherm.versionedserialization;
 
+import com.fasterxml.classmate.ResolvedType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.jsonSchema.JsonSchema;
 import com.fasterxml.jackson.module.jsonSchema.JsonSchemaGenerator;
+import com.github.victools.jsonschema.generator.CustomDefinition;
 import com.github.victools.jsonschema.generator.OptionPreset;
+import com.github.victools.jsonschema.generator.SchemaGenerationContext;
 import com.github.victools.jsonschema.generator.SchemaGenerator;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaVersion;
 import com.github.victools.jsonschema.module.jackson.JacksonModule;
+import com.mcherm.versionedserialization.objects.contents.Currency;
+
+import java.util.Collections;
 
 /**
  * Contains public static methods for serialization and deserialization.
@@ -34,6 +40,21 @@ public class SerializationUtil {
     }
 
     /**
+     * This deserializes an object from JSON, returning the new object.
+     *
+     * @param serialized the JSON as a string
+     * @param clazz the class to deserialize to
+     * @return the newly created object
+     */
+    public static <T> T deserialize(final String serialized, final Class<T> clazz) {
+        try {
+            return objectMapper.readValue(serialized, clazz);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to deserialize object", e);
+        }
+    }
+
+    /**
      * This generates a JSON Schema schema to document the serialization format
      * used if instances of the given class are serialized using JSON.
      *
@@ -41,7 +62,7 @@ public class SerializationUtil {
      * @return the JSON Schema as a String
      */
     public static String generateSchema(final Class<?> clazz) {
-        return generateSchemaJackson(clazz);
+        return generateSchemaVictools(clazz);
     }
 
     /**
@@ -70,8 +91,19 @@ public class SerializationUtil {
      */
     static String generateSchemaVictools(final Class<?> clazz) {
         try {
-            final SchemaGeneratorConfigBuilder configBuilder = new SchemaGeneratorConfigBuilder(SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON);
-            configBuilder.with(new JacksonModule());
+            final var configBuilder = new SchemaGeneratorConfigBuilder(
+                    SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON)
+                    .with(new JacksonModule());
+            // Tell Victools about the custom serialization for Currency objects
+            configBuilder.forFields().withTargetTypeOverridesResolver(
+                    field -> {
+                        final ResolvedType fieldType = field.getType();
+                        if (fieldType != null && Currency.class.isAssignableFrom(fieldType.getErasedType())) {
+                            return Collections.singletonList(field.getContext().resolve(String.class));
+                        }
+                        return null;
+                    }
+            );
             final SchemaGeneratorConfig config = configBuilder.build();
             final SchemaGenerator generator = new SchemaGenerator(config);
             final JsonNode schemaNode = generator.generateSchema(clazz);
@@ -81,18 +113,4 @@ public class SerializationUtil {
         }
     }
 
-    /**
-     * This deserializes an object from JSON, returning the new object.
-     *
-     * @param serialized the JSON as a string
-     * @param clazz the class to deserialize to
-     * @return the newly created object
-     */
-    public static <T> T deserialize(final String serialized, final Class<T> clazz) {
-        try {
-            return objectMapper.readValue(serialized, clazz);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to deserialize object", e);
-        }
-    }
 }

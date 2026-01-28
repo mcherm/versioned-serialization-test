@@ -54,14 +54,14 @@ public class MoneyStuffV1Test {
         final String expected = """
             {"$schema":"https://json-schema.org/draft/2020-12/schema",\
             "$defs":{\
-            "Money(USD)":{"type":"object","properties":{"amount":{"type":"number"},"currency":{"type":"object"}}}\
+            "Money(USD)":{"type":"object","properties":{"amount":{"type":"number"},"currency":{"type":"string"}}}\
             },\
             "type":"object","properties":{\
             "balanceCa":{"type":"object","properties":{"amount":{"type":"number"},\
-            "currency":{"type":"object"}}},\
+            "currency":{"type":"string"}}},\
             "balanceUs":{"$ref":"#/$defs/Money(USD)"},\
             "debtUs":{"$ref":"#/$defs/Money(USD)"},\
-            "mainCurrency":{"type":"object"}\
+            "mainCurrency":{"type":"string"}\
             }}""";
         assertEquals(expected, schema);
     }
