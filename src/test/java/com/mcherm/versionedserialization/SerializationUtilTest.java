@@ -24,8 +24,16 @@ public class SerializationUtilTest {
     }
 
     @Test
-    public void testGenerateSchemaSimpleV1() {
-        final String schema = SerializationUtil.generateSchema(SimpleV1.class);
+    public void testGenerateSchemaSimpleV1Jackson() {
+        final String schema = SerializationUtil.generateSchemaJackson(SimpleV1.class);
+        final String expected = """
+            {"type":"object","id":"urn:jsonschema:com:mcherm:versionedserialization:objects:SimpleV1","properties":{"s":{"type":"string"},"i":{"type":"integer"}}}""";
+        assertEquals(expected, schema);
+    }
+
+    @Test
+    public void testGenerateSchemaSimpleV1Victools() {
+        final String schema = SerializationUtil.generateSchemaVictools(SimpleV1.class);
         final String expected = """
             {"type":"object","id":"urn:jsonschema:com:mcherm:versionedserialization:objects:SimpleV1","properties":{"s":{"type":"string"},"i":{"type":"integer"}}}""";
         assertEquals(expected, schema);
