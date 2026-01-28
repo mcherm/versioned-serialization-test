@@ -13,7 +13,7 @@ import java.io.IOException;
 public class CurrencyDeserializer extends JsonDeserializer<Currency> {
     @Override
     public Currency deserialize(JsonParser parser, DeserializationContext context) throws IOException, JacksonException {
-        if (parser.getCurrentToken() != JsonToken.VALUE_STRING) {
+        if (parser.getCurrentToken() == JsonToken.VALUE_STRING) {
             final String str = parser.getText();
             try {
                 return Currency.fromString(str);

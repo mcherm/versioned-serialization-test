@@ -1,6 +1,8 @@
 package com.mcherm.versionedserialization.objects.contents;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.mcherm.versionedserialization.objects.contents.serialize.CurrencyDeserializer;
 import com.mcherm.versionedserialization.objects.contents.serialize.CurrencySerializer;
 
 import java.util.Collections;
@@ -10,6 +12,7 @@ import java.util.Map;
 
 /** Parent class for currency types. */
 @JsonSerialize(using = CurrencySerializer.class)
+@JsonDeserialize(using = CurrencyDeserializer.class)
 public abstract sealed class Currency permits USD, CAD {
 
     static final Map<String,Currency> CURRENCY_MAP;

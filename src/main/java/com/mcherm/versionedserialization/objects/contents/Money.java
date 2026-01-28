@@ -25,22 +25,14 @@ public class Money<Cur extends Currency> {
     }
 
     /** Factory function. */
-    public static <Cur extends Currency> Money<Cur> fromString(
-            final String amount,
-            final Cur currency
-    ) {
-        return new Money<>(new BigDecimal(amount), currency);
-    }
-
-    /** Factory function. */
     @JsonCreator
     public static <Cur extends Currency> Money<Cur> fromString(
             @JsonProperty("amount") final String amount,
-            @JsonProperty("currency") final String currencyCode
+            @JsonProperty("currency") final Cur currency
     ) {
-        return new Money(new BigDecimal(amount), Currency.fromString(currencyCode));
+        return new Money<>(new BigDecimal(amount), currency);
     }
-
+    
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof Money<?> money)) return false;
