@@ -1,5 +1,7 @@
 package com.mcherm.versionedserialization.schemadiff.deltas;
 
+import com.mcherm.versionedserialization.schemadiff.schema.Subschema;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;

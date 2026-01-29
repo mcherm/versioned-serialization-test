@@ -83,30 +83,74 @@ public class SchemaDifferTest {
                 List.of(),
                 List.of()
         );
-
     }
 
-    public class WidgetV1 {
+    public static class InnerV1 {
         public String s;
     }
-    public class WidgetV2 {
+    public static class InnerV2 {
         public String s;
         public String t;
     }
-    public class HasListOfWidgetsV1 {
+    public static class OuterV1 {
+        public String a;
+        public InnerV1 inner;
+    }
+    public static class OuterV2 {
+        public String a;
+        public InnerV2 inner;
+    }
+
+    @Test
+    public void testChangeToNestedClass() {
+        assertSchemaDeltas(
+                OuterV1.class, OuterV2.class,
+                List.of("inner/t"),
+                List.of(),
+                List.of()
+        );
+    }
+
+
+    public static class WidgetV1 {
+        public String s;
+    }
+    public static class WidgetV2 {
+        public String s;
+        public String t;
+    }
+    // FIXME: Note: I am naming this with a "Z" because until back-references work I need to hack the alphabetical order
+    public static class ZHasListOfWidgetsV1 {
         public List<WidgetV1> widgets;
     }
-    public class HasListOfWidgetsV2 {
+    public static class ZHasListOfWidgetsV2 {
         public List<WidgetV2> widgets;
     }
 
     @Test
     public void testChangeFieldInList() {
         assertSchemaDeltas(
-                HasListOfWidgetsV1.class, HasListOfWidgetsV2.class,
+                ZHasListOfWidgetsV1.class, ZHasListOfWidgetsV2.class,
+                List.of("widgets[]t"),
                 List.of(),
+                List.of()
+        );
+    }
+
+    public static class DoublyNestedV1 {
+        public ZHasListOfWidgetsV1 inner;
+    }
+    public static class DoublyNestedV2 {
+        public ZHasListOfWidgetsV2 inner;
+    }
+
+    @Test
+    public void testDoublyNested() {
+        assertSchemaDeltas(
+                DoublyNestedV1.class, DoublyNestedV2.class,
+                List.of("inner/widgets[]t"),
                 List.of(),
-                List.of("widgets")
+                List.of()
         );
     }
 
