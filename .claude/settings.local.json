@@ -3,7 +3,8 @@
     "allow": [
       "Bash(mvn test)",
       "WebSearch",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:json-schema.org)"
     ]
   }
 }

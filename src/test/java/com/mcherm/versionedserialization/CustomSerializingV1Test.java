@@ -84,20 +84,6 @@ public class CustomSerializingV1Test {
                 "simpleGetter":{"type":"string"},\
                 "simplePublic":{"type":"string"}\
                 }}""";
-//        final String expected = """
-//            {"$schema":"https://json-schema.org/draft/2020-12/schema",\
-//            "$defs":{"Widget":{"type":"object","properties":{"name":{"type":"string"},"shoeSize":{"type":"integer"}}}},\
-//            "type":"object",\
-//            "properties":{\
-//            "backgroundColor":{"type":"string","enum":["RED","ORANGE","YELLOW","GREEN","BLUE","INDIGO","VIOLET"]},\
-//            "listOfLamps":{"type":"array","items":{"type":"object","properties":{"lumens":{"type":"number"},"shape":{"type":"string"}}}},\
-//            "listOfStrings":{"type":"array","items":{"type":"string"}},\
-//            "listOfWidgets":{"type":"array","items":{"$ref":"#/$defs/Widget"}},\
-//            "nestedWidget":{"$ref":"#/$defs/Widget"},\
-//            "optionalValue":{"type":["string","null"]},\
-//            "simpleGetter":{"type":"string"},\
-//            "simplePublic":{"type":"string"}\
-//            }}""";
         assertEquals(expected, schema);
     }
 
