@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class EvolutionTest {
 
     /** Class to use in a test; adds one optional field. */
-    private static class SimpleV1AddOptionalField {
+    public static class SimpleV1AddOptionalField {
         public String s;
         public int i;
         public Optional<String> extra;
