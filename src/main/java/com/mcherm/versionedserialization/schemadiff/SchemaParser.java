@@ -264,7 +264,12 @@ public class SchemaParser {
                 case "items" -> itemsType = parseSubschema(defs, entry.getValue());
                 case "enum" -> enumValues = parseEnumValues(entry.getValue());
                 case "$ref" -> reference = parseReference(entry.getValue());
-                default -> throw new UnsupportedSchemaFeature("unsupported subschema feature: " + entry.getKey());
+                default -> {
+                    // Silently ignore JSON Schema extension properties (x-javaType, etc.)
+                    if (!entry.getKey().startsWith("x-")) {
+                        throw new UnsupportedSchemaFeature("unsupported subschema feature: " + entry.getKey());
+                    }
+                }
             }
         }
         if (reference == null) {

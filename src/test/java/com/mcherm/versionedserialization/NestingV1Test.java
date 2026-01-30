@@ -48,11 +48,11 @@ public class NestingV1Test {
         final String expected = """
             {"$schema":"https://json-schema.org/draft/2020-12/schema",\
             "$defs":{\
-            "SelfNested":{"type":"object","properties":{"next":{"$ref":"#/$defs/SelfNested"},"value":{"type":"integer"}}}\
+            "SelfNested":{"type":"object","properties":{"next":{"$ref":"#/$defs/SelfNested","x-javaType":"com.mcherm.versionedserialization.objects.contents.SelfNested"},"value":{"type":"integer","x-javaType":"int"}}}\
             },\
             "type":"object",\
             "properties":{\
-            "nestlings":{"$ref":"#/$defs/SelfNested"}\
+            "nestlings":{"$ref":"#/$defs/SelfNested","x-javaType":"com.mcherm.versionedserialization.objects.contents.SelfNested"}\
             }}""";
         assertEquals(expected, schema);
     }

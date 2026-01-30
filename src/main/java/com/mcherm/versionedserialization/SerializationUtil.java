@@ -4,8 +4,10 @@ import com.fasterxml.classmate.ResolvedType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.module.jsonSchema.JsonSchema;
 import com.fasterxml.jackson.module.jsonSchema.JsonSchemaGenerator;
+import com.github.victools.jsonschema.generator.MemberScope;
 import com.github.victools.jsonschema.generator.Option;
 import com.github.victools.jsonschema.generator.OptionPreset;
 import com.github.victools.jsonschema.generator.SchemaGenerator;
@@ -105,25 +107,59 @@ public class SerializationUtil {
      */
     static String generateSchemaVictools(final Class<?> clazz) {
         try {
-            final var configBuilder = new SchemaGeneratorConfigBuilder(
-                    SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON)
-                    .with(Option.DEFINITIONS_FOR_ALL_OBJECTS);
-            // Tell Victools about the custom serialization for Currency objects
-            configBuilder.forFields().withTargetTypeOverridesResolver(
-                    field -> {
-                        final ResolvedType fieldType = field.getType();
-                        if (fieldType != null && Currency.class.isAssignableFrom(fieldType.getErasedType())) {
-                            return Collections.singletonList(field.getContext().resolve(String.class));
-                        }
-                        return null;
-                    }
-            );
+            final SchemaGeneratorConfigBuilder configBuilder = createVictoolsConfigBuilder();
             final SchemaGeneratorConfig config = configBuilder.build();
             final SchemaGenerator generator = new SchemaGenerator(config);
             final JsonNode schemaNode = generator.generateSchema(clazz);
             return objectMapper.writeValueAsString(schemaNode);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to generate schema", e);
+        }
+    }
+
+    /**
+     * Creates a victools SchemaGeneratorConfigBuilder with the standard configuration
+     * used by this project. The generated schema includes "x-javaType" and
+     * "x-javaElementType" annotations on each property node, recording the declared
+     * Java type that produces that part of the schema.
+     *
+     * @return a configured SchemaGeneratorConfigBuilder
+     */
+    public static SchemaGeneratorConfigBuilder createVictoolsConfigBuilder() {
+        final var configBuilder = new SchemaGeneratorConfigBuilder(
+                SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON)
+                .with(Option.DEFINITIONS_FOR_ALL_OBJECTS);
+        // Tell Victools about the custom serialization for Currency objects
+        configBuilder.forFields().withTargetTypeOverridesResolver(
+                field -> {
+                    final ResolvedType fieldType = field.getType();
+                    if (fieldType != null && Currency.class.isAssignableFrom(fieldType.getErasedType())) {
+                        return Collections.singletonList(field.getContext().resolve(String.class));
+                    }
+                    return null;
+                }
+        );
+        // Annotate each property node with the declared Java type
+        configBuilder.forFields().withInstanceAttributeOverride(
+                (node, field, context) -> addJavaTypeAnnotation(node, field)
+        );
+        configBuilder.forMethods().withInstanceAttributeOverride(
+                (node, method, context) -> addJavaTypeAnnotation(node, method)
+        );
+        return configBuilder;
+    }
+
+    /**
+     * Annotates a schema property node with x-javaType (and x-javaElementType for
+     * parameterized types like List&lt;T&gt;). Uses getDeclaredType() so the original
+     * Java type is recorded (e.g. Optional rather than the unwrapped String).
+     */
+    private static void addJavaTypeAnnotation(final ObjectNode node, final MemberScope<?, ?> scope) {
+        final var declaredType = scope.getDeclaredType();
+        node.put("x-javaType", declaredType.getErasedType().getName());
+        final var typeParams = declaredType.getTypeParameters();
+        if (typeParams != null && !typeParams.isEmpty()) {
+            node.put("x-javaElementType", typeParams.get(0).getErasedType().getName());
         }
     }
 

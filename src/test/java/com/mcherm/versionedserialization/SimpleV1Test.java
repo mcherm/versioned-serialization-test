@@ -35,7 +35,7 @@ public class SimpleV1Test {
     public void testGenerateSchemaVictools() {
         final String schema = SerializationUtil.generateSchemaVictools(SimpleV1.class);
         final String expected = """
-            {"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"i":{"type":"integer"},"s":{"type":"string"}}}""";
+            {"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"i":{"type":"integer","x-javaType":"int"},"s":{"type":"string","x-javaType":"java.lang.String"}}}""";
         assertEquals(expected, schema);
     }
 }

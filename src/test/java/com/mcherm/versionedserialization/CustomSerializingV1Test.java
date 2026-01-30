@@ -71,18 +71,18 @@ public class CustomSerializingV1Test {
                 {"$schema":"https://json-schema.org/draft/2020-12/schema",\
                 "$defs":{\
                 "Color":{"type":"string","enum":["RED","ORANGE","YELLOW","GREEN","BLUE","INDIGO","VIOLET"]},\
-                "Lamp":{"type":"object","properties":{"lumens":{"type":"number"},"shape":{"type":"string"}}},\
-                "Widget":{"type":"object","properties":{"name":{"type":"string"},"shoeSize":{"type":"integer"}}}\
+                "Lamp":{"type":"object","properties":{"lumens":{"type":"number","x-javaType":"float"},"shape":{"type":"string","x-javaType":"java.lang.String"}}},\
+                "Widget":{"type":"object","properties":{"name":{"type":"string","x-javaType":"java.lang.String"},"shoeSize":{"type":"integer","x-javaType":"int"}}}\
                 },\
                 "type":"object","properties":{\
-                "backgroundColor":{"$ref":"#/$defs/Color"},\
-                "listOfLamps":{"type":"array","items":{"$ref":"#/$defs/Lamp"}},\
-                "listOfStrings":{"type":"array","items":{"type":"string"}},\
-                "listOfWidgets":{"type":"array","items":{"$ref":"#/$defs/Widget"}},\
-                "nestedWidget":{"$ref":"#/$defs/Widget"},\
-                "optionalValue":{"type":["string","null"]},\
-                "simpleGetter":{"type":"string"},\
-                "simplePublic":{"type":"string"}\
+                "backgroundColor":{"$ref":"#/$defs/Color","x-javaType":"com.mcherm.versionedserialization.objects.contents.Color"},\
+                "listOfLamps":{"x-javaType":"java.util.List","x-javaElementType":"com.mcherm.versionedserialization.objects.contents.Lamp","type":"array","items":{"$ref":"#/$defs/Lamp","x-javaType":"java.util.List","x-javaElementType":"com.mcherm.versionedserialization.objects.contents.Lamp"}},\
+                "listOfStrings":{"x-javaType":"java.util.List","x-javaElementType":"java.lang.String","type":"array","items":{"type":"string","x-javaType":"java.util.List","x-javaElementType":"java.lang.String"}},\
+                "listOfWidgets":{"x-javaType":"java.util.List","x-javaElementType":"com.mcherm.versionedserialization.objects.contents.Widget","type":"array","items":{"$ref":"#/$defs/Widget","x-javaType":"java.util.List","x-javaElementType":"com.mcherm.versionedserialization.objects.contents.Widget"}},\
+                "nestedWidget":{"$ref":"#/$defs/Widget","x-javaType":"com.mcherm.versionedserialization.objects.contents.Widget"},\
+                "optionalValue":{"type":["string","null"],"x-javaType":"java.util.Optional","x-javaElementType":"java.lang.String"},\
+                "simpleGetter":{"type":"string","x-javaType":"java.lang.String"},\
+                "simplePublic":{"type":"string","x-javaType":"java.lang.String"}\
                 }}""";
         assertEquals(expected, schema);
     }
