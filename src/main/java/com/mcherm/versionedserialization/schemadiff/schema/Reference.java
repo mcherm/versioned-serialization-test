@@ -3,7 +3,7 @@ package com.mcherm.versionedserialization.schemadiff.schema;
 import java.util.Objects;
 
 /** Represents a reference. */
-public class Reference {
+public final class Reference implements Subschema {
     /** This is JUST the part after the "#/$defs/" and no other prefix is supported. */
     private final String name;
 
@@ -13,6 +13,16 @@ public class Reference {
 
     public String getName() {
         return name;
+    }
+
+    @Override
+    public boolean isResolved() {
+        return false;
+    }
+
+    @Override
+    public boolean isInSelfReference() {
+        return false;
     }
 
     @Override

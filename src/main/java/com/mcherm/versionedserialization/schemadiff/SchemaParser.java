@@ -3,10 +3,12 @@ package com.mcherm.versionedserialization.schemadiff;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.mcherm.versionedserialization.SerializationUtil;
 import com.mcherm.versionedserialization.schemadiff.schema.EnumValues;
+import com.mcherm.versionedserialization.schemadiff.schema.NormalSubschema;
 import com.mcherm.versionedserialization.schemadiff.schema.PrimitiveType;
 import com.mcherm.versionedserialization.schemadiff.schema.Properties;
 import com.mcherm.versionedserialization.schemadiff.schema.Reference;
 import com.mcherm.versionedserialization.schemadiff.schema.SchemaInfo;
+import com.mcherm.versionedserialization.schemadiff.schema.SelfReference;
 import com.mcherm.versionedserialization.schemadiff.schema.Subschema;
 import com.mcherm.versionedserialization.schemadiff.schema.Types;
 import org.jetbrains.annotations.Nullable;
@@ -64,8 +66,8 @@ public class SchemaParser {
      * self-reference).
      */
     private static class ResolutionState {
-        private List<String> nameStack;
-        private Set<String> loopsToClear;
+        private final List<String> nameStack;
+        private final Set<String> loopsToClear;
         /** Constructor passing one name for the stack. */
         public ResolutionState(final String name) {
             nameStack = new ArrayList<>();
@@ -108,7 +110,6 @@ public class SchemaParser {
      * but none of them will contain a Reference.
      *
      * @param defs the defs which may contain References when we start
-     * @return a new defs that does not contain any References
      */
     private void fixForwardReferences(
             final Map<String,Subschema> defs
@@ -141,48 +142,52 @@ public class SchemaParser {
         if (existingSubschema.isResolved()) {
             return existingSubschema;
         }
-        final Reference reference = existingSubschema.getReference();
-        if (reference == null) {
-            // --- handle a non-reference ---
-            final Types types = existingSubschema.getTypes();
-            Properties properties = existingSubschema.getProperties();
-            if (properties != null) {
-                properties = resolveReferencesInProperties(defs, resolutionState, properties);
-            }
-            Subschema itemsType = existingSubschema.getItemsType();
-            if (itemsType != null) {
-                itemsType = resolveReferencesInSubschema(defs, resolutionState, itemsType);
-            }
-            final EnumValues enumValues = existingSubschema.getEnumValues();
+        switch(existingSubschema) {
+            case SelfReference selfReference -> throw new RuntimeException(
+                    "It should never be resolving something that already contains a SelfReference");
+            case NormalSubschema existingNormalSubschema -> {
+                // --- handle a non-reference ---
+                final Types types = existingNormalSubschema.getTypes();
+                Properties properties = existingNormalSubschema.getProperties();
+                if (properties != null) {
+                    properties = resolveReferencesInProperties(defs, resolutionState, properties);
+                }
+                Subschema itemsType = existingNormalSubschema.getItemsType();
+                if (itemsType != null) {
+                    itemsType = resolveReferencesInSubschema(defs, resolutionState, itemsType);
+                }
+                final EnumValues enumValues = existingNormalSubschema.getEnumValues();
 
-            final boolean isInSelfReference = resolutionState.hasSelfReferences();
-            return Subschema.fromFields(isInSelfReference, types, properties, itemsType, enumValues);
-        } else {
-            // --- handle a reference ---
-            // ----- check for self-reference ----
-            final String referenceName = reference.getName();
-            if (resolutionState.getNameStack().contains(referenceName)) {
-                resolutionState.addLoopToClear(referenceName);
-                final Subschema resolvedSubschema = Subschema.fromSelfReference(referenceName);
+                final boolean isInSelfReference = resolutionState.hasSelfReferences();
+                return NormalSubschema.fromFields(isInSelfReference, types, properties, itemsType, enumValues);
+            }
+            case Reference reference -> {
+                // --- handle a reference ---
+                // ----- check for self-reference ----
+                final String referenceName = reference.getName();
+                if (resolutionState.getNameStack().contains(referenceName)) {
+                    resolutionState.addLoopToClear(referenceName);
+                    final Subschema resolvedSubschema = SelfReference.fromSelfReference(referenceName);
+                    return resolvedSubschema;
+                }
+                // ----- retrieve from defs -----
+                final Subschema definedSubschema = defs.get(referenceName);
+                if (definedSubschema == null) {
+                    throw new UnsupportedSchemaFeature("Reference #/$defs/" + referenceName + " not found.");
+                }
+                if (definedSubschema.isResolved()) {
+                    return definedSubschema;
+                }
+                // ----- resolve it -----
+                resolutionState.pushName(referenceName);
+                final Subschema resolvedSubschema = resolveReferencesInSubschema(defs, resolutionState, definedSubschema);
+                resolutionState.popName();
+                // ----- record in defs (giving us memoization) -----
+                defs.put(referenceName, resolvedSubschema);
+                resolutionState.markLoopCleared(referenceName);
+                // ----- all done -----
                 return resolvedSubschema;
             }
-            // ----- retrieve from defs -----
-            final Subschema definedSubschema = defs.get(referenceName);
-            if (definedSubschema == null) {
-                throw new UnsupportedSchemaFeature("Reference #/$defs/" + referenceName + " not found.");
-            }
-            if (definedSubschema.isResolved()) {
-                return definedSubschema;
-            }
-            // ----- resolve it -----
-            resolutionState.pushName(referenceName);
-            final Subschema resolvedSubschema = resolveReferencesInSubschema(defs, resolutionState, definedSubschema);
-            resolutionState.popName();
-            // ----- record in defs (giving us memoization) -----
-            defs.put(referenceName, resolvedSubschema);
-            resolutionState.markLoopCleared(referenceName);
-            // ----- all done -----
-            return resolvedSubschema;
         }
     }
 
@@ -217,7 +222,6 @@ public class SchemaParser {
      * @param defs the defs in their current state. This may get mutated by the method
      * @param jsonNode the node containing the properties map
      * @return the new Properties object
-     * @throws UnsupportedSchemaFeature
      */
     private Properties parseProperties(
             final Map<String,Subschema> defs,
@@ -240,7 +244,6 @@ public class SchemaParser {
      * @param defs the defs in their current state. This may get mutated by the method
      * @param jsonNode the node containing the subschema
      * @return the newly parsed Subschema
-     * @throws UnsupportedSchemaFeature
      */
     private Subschema parseSubschema(
             final Map<String,Subschema> defs,
@@ -266,7 +269,7 @@ public class SchemaParser {
         }
         if (reference == null) {
             final boolean isInSelfReference = false;
-            return Subschema.fromFields(isInSelfReference, types, properties, itemsType, enumValues);
+            return NormalSubschema.fromFields(isInSelfReference, types, properties, itemsType, enumValues);
         }
 
         // --- Handle Reference (which is special) ---
@@ -278,8 +281,8 @@ public class SchemaParser {
             // It's a back-reference, and we can go ahead and use it now.
             return knownSubschema;
         } else {
-            // It's a forward reference, so we need to create a reference and resolve it in a later pass
-            return Subschema.fromReference(reference);
+            // It's a forward reference, so we need to use the reference and resolve it in a later pass
+            return reference;
         }
     }
 

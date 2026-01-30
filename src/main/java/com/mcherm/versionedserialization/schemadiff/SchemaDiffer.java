@@ -4,6 +4,7 @@ import com.mcherm.versionedserialization.schemadiff.deltas.Add;
 import com.mcherm.versionedserialization.schemadiff.deltas.Change;
 import com.mcherm.versionedserialization.schemadiff.deltas.Drop;
 import com.mcherm.versionedserialization.schemadiff.deltas.SchemaDeltas;
+import com.mcherm.versionedserialization.schemadiff.schema.NormalSubschema;
 import com.mcherm.versionedserialization.schemadiff.schema.Properties;
 import com.mcherm.versionedserialization.schemadiff.schema.SchemaInfo;
 import com.mcherm.versionedserialization.schemadiff.schema.Subschema;
@@ -43,8 +44,10 @@ public class SchemaDiffer {
         allFields.addAll(secondProperties.keySet());
 
         for (String field : allFields) {
-            final Subschema firstSubschema = firstProperties.get(field);
-            final Subschema secondSubschema = secondProperties.get(field);
+            // FIXME: I am SOMEWHAT confident that these will always be a NormalSubschema, but
+            //   really I should verify that holds true in all circumstances or handle it differently.
+            final NormalSubschema firstSubschema = (NormalSubschema) firstProperties.get(field);
+            final NormalSubschema secondSubschema = (NormalSubschema)  secondProperties.get(field);
             if (firstSubschema == null && secondSubschema == null) {
                 throw new RuntimeException("impossible for both be null");
             } else if (firstSubschema != null && secondSubschema == null) {
@@ -63,8 +66,8 @@ public class SchemaDiffer {
                         continue;
                     }
                     // --- Then check for two lists of a single type that changed ---
-                    final Subschema firstItems = firstSubschema.getItemsType();
-                    final Subschema secondItems = secondSubschema.getItemsType();
+                    final NormalSubschema firstItems = (NormalSubschema) firstSubschema.getItemsType();
+                    final NormalSubschema secondItems = (NormalSubschema) secondSubschema.getItemsType();
                     if (firstItems != null && secondItems != null) {
                         // they both have items... are both of those objects with properties?
                         final Properties firstItemsProps = firstItems.getProperties();
@@ -78,7 +81,6 @@ public class SchemaDiffer {
                     }
                     // --- Can't really do inner changes; report the change on this level ---
                     schemaDeltas.getChanges().add(new Change(prefix + field, firstSubschema, secondSubschema));
-
                 }
             }
         }
