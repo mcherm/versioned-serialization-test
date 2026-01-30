@@ -133,8 +133,123 @@ public class SchemaParserTest {
             }}""";
 
         final SchemaParser parser = new SchemaParser();
-        // This one throws because we don't support backreferences yet
-        // FIXME: Change that eventually so it DOES work
-        assertThrows(UnsupportedSchemaFeature.class, () -> parser.parse(schema));
+        try {
+            final SchemaInfo schemaInfo = parser.parse(schema);
+            final String expected = """
+                {"$schema":"https://json-schema.org/draft/2020-12/schema",\
+                "$defs":{\
+                "SelfNested":{*"type":["object"],"properties":{"next":{"$selfRef":"SelfNested"},"value":{"type":["integer"]}}}\
+                },\
+                "type":"object",\
+                "properties":{\
+                "nestlings":{*"type":["object"],"properties":{"next":{"$selfRef":"SelfNested"},"value":{"type":["integer"]}}}\
+                }}""";
+            assertEquals(expected, schemaInfo.toString());
+        } catch (UnsupportedSchemaFeature err) {
+            err.printStackTrace();
+            fail(err.getMessage());
+        }
     }
+
+    @Test
+    public void testParseWithOneStepNesting() {
+        final String schema = """
+            {"$schema":"https://json-schema.org/draft/2020-12/schema",\
+            "$defs":{\
+            "A":{"type":"object","properties":{"link1":{"$ref":"#/$defs/A"}}}\
+            },\
+            "type":"object",\
+            "properties":{\
+            "contents":{"$ref":"#/$defs/A"}\
+            }}""";
+
+        final SchemaParser parser = new SchemaParser();
+        try {
+            final SchemaInfo schemaInfo = parser.parse(schema);
+            final String expected = """
+                {"$schema":"https://json-schema.org/draft/2020-12/schema",\
+                "$defs":{\
+                "A":{*"type":["object"],"properties":{"link1":{"$selfRef":"A"}}}\
+                },\
+                "type":"object",\
+                "properties":{\
+                "contents":{*"type":["object"],"properties":{"link1":{"$selfRef":"A"}}}\
+                }}""";
+            assertEquals(expected, schemaInfo.toString());
+        } catch (UnsupportedSchemaFeature err) {
+            err.printStackTrace();
+            fail(err.getMessage());
+        }
+    }
+
+    @Test
+    public void testParseWithTwoStepNesting() {
+        final String schema = """
+            {"$schema":"https://json-schema.org/draft/2020-12/schema",\
+            "$defs":{\
+            "A":{"type":"object","properties":{"link1":{"$ref":"#/$defs/B"}}},\
+            "B":{"type":"object","properties":{"link2":{"$ref":"#/$defs/A"}}}\
+            },\
+            "type":"object",\
+            "properties":{\
+            "contents":{"$ref":"#/$defs/A"}\
+            }}""";
+
+        final SchemaParser parser = new SchemaParser();
+        try {
+            final SchemaInfo schemaInfo = parser.parse(schema);
+            final String expected = """
+                {"$schema":"https://json-schema.org/draft/2020-12/schema",\
+                "$defs":{\
+                "A":{"type":["object"],"properties":{"link1":{*"type":["object"],"properties":{"link2":{*"type":["object"],"properties":{"link1":{"$selfRef":"B"}}}}}}},\
+                "B":{*"type":["object"],"properties":{"link2":{*"type":["object"],"properties":{"link1":{"$selfRef":"B"}}}}}\
+                },\
+                "type":"object",\
+                "properties":{\
+                "contents":{"type":["object"],"properties":{"link1":{*"type":["object"],"properties":{"link2":{*"type":["object"],"properties":{"link1":{"$selfRef":"B"}}}}}}}\
+                }}""";
+            assertEquals(expected, schemaInfo.toString());
+        } catch (UnsupportedSchemaFeature err) {
+            err.printStackTrace();
+            fail(err.getMessage());
+        }
+    }
+
+    @Test
+    public void testParseWithNesting() {
+        final String schema = """
+            {"$schema":"https://json-schema.org/draft/2020-12/schema",\
+            "$defs":{\
+            "A":{"type":"object","properties":{"first":{"$ref":"#/$defs/B"},"second":{"$ref":"#/$defs/C"}}},\
+            "B":{"type":"object","properties":{"only":{"$ref":"#/$defs/D"},"data":{"type":"string"}}},\
+            "C":{"type":"object","properties":{"data":{"type":"string"}}},\
+            "D":{"type":"object","properties":{"back":{"$ref":"#/$defs/B"},"data":{"type":"string"}}}\
+            },\
+            "type":"object",\
+            "properties":{\
+            "contents":{"$ref":"#/$defs/A"}\
+            }}""";
+
+        final SchemaParser parser = new SchemaParser();
+        try {
+            final SchemaInfo schemaInfo = parser.parse(schema);
+            final String expected = """
+                    {"$schema":"https://json-schema.org/draft/2020-12/schema",\
+                    "$defs":{\
+                    "A":{"type":["object"],"properties":{"first":{"type":["object"],"properties":{"only":{*"type":["object"],"properties":{"back":{*"type":["object"],"properties":{"only":{"$selfRef":"D"},"data":{"type":["string"]}}},"data":{"type":["string"]}}},"data":{"type":["string"]}}},"second":{"type":["object"],"properties":{"data":{"type":["string"]}}}}},\
+                    "B":{"type":["object"],"properties":{"only":{*"type":["object"],"properties":{"back":{*"type":["object"],"properties":{"only":{"$selfRef":"D"},"data":{"type":["string"]}}},"data":{"type":["string"]}}},"data":{"type":["string"]}}},\
+                    "C":{"type":["object"],"properties":{"data":{"type":["string"]}}},\
+                    "D":{*"type":["object"],"properties":{"back":{*"type":["object"],"properties":{"only":{"$selfRef":"D"},"data":{"type":["string"]}}},"data":{"type":["string"]}}}\
+                    },\
+                    "type":"object",\
+                    "properties":{\
+                    "contents":{"type":["object"],"properties":{"first":{"type":["object"],"properties":{"only":{*"type":["object"],"properties":{"back":{*"type":["object"],"properties":{"only":{"$selfRef":"D"},"data":{"type":["string"]}}},"data":{"type":["string"]}}},"data":{"type":["string"]}}},"second":{"type":["object"],"properties":{"data":{"type":["string"]}}}}}\
+                    }}""";
+            assertEquals(expected, schemaInfo.toString());
+        } catch (UnsupportedSchemaFeature err) {
+            err.printStackTrace();
+            fail(err.getMessage());
+        }
+    }
+
 }

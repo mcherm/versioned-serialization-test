@@ -19,36 +19,30 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Attempts to parse a JSON Schema.
+ * This object is used to parse a JSON Schema file.
  */
 public class SchemaParser {
 
     /**
-     * A way of accessing the defs as we build things. It's ThreadLocal and used only
-     * during the parse() method and the things that calls. This will support back
-     * references (but not forward references). // FIXME: deal with forward references
+     * Parse a schema. This is passed the contents of a JSON Schema file (as a String) and
+     * it returns a SchemaInfo object, which is a parsed form of it. If it runs into anything
+     * it can't handle it throws an UnsupportedSchemaFeature exception instead.
      */
-    private final ThreadLocal<Map<String,Subschema>> globalDefs = new ThreadLocal<>();
-
-    /** Parse a schema. */
     public SchemaInfo parse(String schema) throws UnsupportedSchemaFeature {
         // --- parse to JSON tree ---
         final JsonNode jsonNode = SerializationUtil.deserializeAsNode(schema);
 
         // --- walk the JSON tree creating stuff ---
-        try {
-            final String schemaVersion = jsonNode.get("$schema").asText();
-            final Map<String,Subschema> defs = parseDefs(jsonNode.get("$defs"));
-            // make sure we did the defs before the properties
-            final Properties properties = parseProperties(jsonNode.get("properties"));
+        final String schemaVersion = jsonNode.get("$schema").asText();
+        final Map<String,Subschema> defs = parseDefs(jsonNode.get("$defs"));
+        fixForwardReferences(defs);
+        // make sure we did the defs before the properties
+        final Properties properties = parseProperties(defs, jsonNode.get("properties"));
 
-            return new SchemaInfo(schemaVersion, defs, properties);
-        } finally {
-            globalDefs.set(null); // clear the threadlocal
-        }
+        return new SchemaInfo(schemaVersion, defs, properties);
     }
 
-    /** Parses a whole list of defs. As a side effect, this sets the threadlocal globalDefs. */
+    /** Parses a whole list of defs. The list it returns may contain unresolved References. */
     private Map<String,Subschema> parseDefs(@Nullable JsonNode jsonNode) throws UnsupportedSchemaFeature {
         if (jsonNode == null) {
             // there WAS no jsonNode, which just means there are no definitions.
@@ -58,26 +52,200 @@ public class SchemaParser {
             throw new UnsupportedSchemaFeature("$defs must be an object");
         }
         final Map<String,Subschema> defs = new LinkedHashMap<>();
-        globalDefs.set(defs); // set the threadlocal. Now we can use it while recursing
         for (var entry : jsonNode.properties()) {
-            defs.put(entry.getKey(), parseSubschema(entry.getValue()));
+            defs.put(entry.getKey(), parseSubschema(defs, entry.getValue()));
         }
         return defs;
     }
 
-    /** Parses a properties declaration. Is passed the map. */
-    private Properties parseProperties(JsonNode jsonNode) throws UnsupportedSchemaFeature {
+    /**
+     * A class containing the data we want to keep around while we do the resolution pass
+     * where any forward references are resolved to their proper values (or perhaps to a
+     * self-reference).
+     */
+    private static class ResolutionState {
+        private List<String> nameStack;
+        private Set<String> loopsToClear;
+        /** Constructor passing one name for the stack. */
+        public ResolutionState(final String name) {
+            nameStack = new ArrayList<>();
+            nameStack.add(name);
+            loopsToClear = new LinkedHashSet<>();
+        }
+        public void pushName(String name) {
+            nameStack.add(name);
+        }
+        public void popName() {
+            final String poppedName = nameStack.removeLast();
+            nameStack.remove(poppedName);
+        }
+        public void addLoopToClear(String name) {
+            loopsToClear.add(name);
+        }
+        public void markLoopCleared(String name) {
+            loopsToClear.remove(name);
+        }
+        public boolean hasSelfReferences() {
+            return !loopsToClear.isEmpty();
+        }
+        public List<String> getNameStack() {
+            return nameStack;
+        }
+
+        @Override
+        public String toString() {
+            return "ResolutionState{" +
+                    "nameStack=" + nameStack +
+                    ", loopsToClear=" + loopsToClear +
+                    '}';
+        }
+    }
+
+
+    /**
+     * This modifies the defs by finding any References within it and replacing them with
+     * the actual contents as a Subschema. The Subschema might contain a self-reference,
+     * but none of them will contain a Reference.
+     *
+     * @param defs the defs which may contain References when we start
+     * @return a new defs that does not contain any References
+     */
+    private void fixForwardReferences(
+            final Map<String,Subschema> defs
+    ) throws UnsupportedSchemaFeature {
+        final Set<String> keysToBeFixed = new LinkedHashSet<>(defs.keySet());
+        while (!keysToBeFixed.isEmpty()) {
+            final String keytowork = keysToBeFixed.iterator().next();
+            keysToBeFixed.remove(keytowork);
+            final Subschema oldSubschema = defs.get(keytowork);
+            final ResolutionState resolutionState = new ResolutionState(keytowork);
+            final Subschema resolvedSubschema = resolveReferencesInSubschema(defs, resolutionState, oldSubschema);
+            defs.put(keytowork, resolvedSubschema);
+        }
+    }
+
+    /**
+     * This resolves forward references within a single subschema. If, along the way, it resolves
+     * an entry in defs it will modify that as it goes.
+     *
+     * @param defs the defs (used to resolve references)
+     * @param resolutionState pass around state while doing the resolution of forward references
+     * @param existingSubschema the current Subschema that we are patching up (or leaving as-is!)
+     * @return the updated Subschema
+     */
+    private Subschema resolveReferencesInSubschema(
+            final Map<String,Subschema> defs,
+            final ResolutionState resolutionState,
+            final Subschema existingSubschema
+    ) throws UnsupportedSchemaFeature {
+        if (existingSubschema.isResolved()) {
+            return existingSubschema;
+        }
+        final Reference reference = existingSubschema.getReference();
+        if (reference == null) {
+            // --- handle a non-reference ---
+            final Types types = existingSubschema.getTypes();
+            Properties properties = existingSubschema.getProperties();
+            if (properties != null) {
+                properties = resolveReferencesInProperties(defs, resolutionState, properties);
+            }
+            Subschema itemsType = existingSubschema.getItemsType();
+            if (itemsType != null) {
+                itemsType = resolveReferencesInSubschema(defs, resolutionState, itemsType);
+            }
+            final EnumValues enumValues = existingSubschema.getEnumValues();
+
+            final boolean isInSelfReference = resolutionState.hasSelfReferences();
+            return Subschema.fromFields(isInSelfReference, types, properties, itemsType, enumValues);
+        } else {
+            // --- handle a reference ---
+            // ----- check for self-reference ----
+            final String referenceName = reference.getName();
+            if (resolutionState.getNameStack().contains(referenceName)) {
+                resolutionState.addLoopToClear(referenceName);
+                final Subschema resolvedSubschema = Subschema.fromSelfReference(referenceName);
+                return resolvedSubschema;
+            }
+            // ----- retrieve from defs -----
+            final Subschema definedSubschema = defs.get(referenceName);
+            if (definedSubschema == null) {
+                throw new UnsupportedSchemaFeature("Reference #/$defs/" + referenceName + " not found.");
+            }
+            if (definedSubschema.isResolved()) {
+                return definedSubschema;
+            }
+            // ----- resolve it -----
+            resolutionState.pushName(referenceName);
+            final Subschema resolvedSubschema = resolveReferencesInSubschema(defs, resolutionState, definedSubschema);
+            resolutionState.popName();
+            // ----- record in defs (giving us memoization) -----
+            defs.put(referenceName, resolvedSubschema);
+            resolutionState.markLoopCleared(referenceName);
+            // ----- all done -----
+            return resolvedSubschema;
+        }
+    }
+
+    /**
+     * This resolves forward references within a single Properties. If, along the way, it resolves
+     * an entry in defs it will modify that as it goes.
+     *
+     * @param defs the defs (used to resolve references)
+     * @param resolutionState pass around state while doing the resolution of forward references
+     * @param existingProperties the current Properties that we are patching up (or leaving as-is!)
+     * @return the updated Properties
+     */
+    private Properties resolveReferencesInProperties(
+            final Map<String,Subschema> defs,
+            final ResolutionState resolutionState,
+            final Properties existingProperties
+    ) throws UnsupportedSchemaFeature {
+        if (existingProperties.allResolved()) {
+            return existingProperties;
+        }
+        final Map<String, Subschema> resolvedProperties = new LinkedHashMap<>();
+        for (Map.Entry<String, Subschema> entry : existingProperties.getProperties().entrySet()) {
+            final Subschema resolvedSubschema = resolveReferencesInSubschema(defs, resolutionState, entry.getValue());
+            resolvedProperties.put(entry.getKey(), resolvedSubschema);
+        }
+        return new Properties(resolvedProperties);
+    }
+
+    /**
+     * Parses a properties declaration.
+     *
+     * @param defs the defs in their current state. This may get mutated by the method
+     * @param jsonNode the node containing the properties map
+     * @return the new Properties object
+     * @throws UnsupportedSchemaFeature
+     */
+    private Properties parseProperties(
+            final Map<String,Subschema> defs,
+            final JsonNode jsonNode
+    ) throws UnsupportedSchemaFeature {
         if (!jsonNode.isObject()) {
             throw new UnsupportedSchemaFeature("properties must be an object");
         }
         final Map<String, Subschema> propData = new LinkedHashMap<>();
         for (var entry : jsonNode.properties()) {
-            propData.put(entry.getKey(), parseSubschema(entry.getValue()));
+            final Subschema subschema = parseSubschema(defs, entry.getValue());
+            propData.put(entry.getKey(), subschema);
         }
         return new Properties(propData);
     }
 
-    private Subschema parseSubschema(JsonNode jsonNode) throws UnsupportedSchemaFeature {
+    /**
+     * Parse a node containing a subschema.
+     *
+     * @param defs the defs in their current state. This may get mutated by the method
+     * @param jsonNode the node containing the subschema
+     * @return the newly parsed Subschema
+     * @throws UnsupportedSchemaFeature
+     */
+    private Subschema parseSubschema(
+            final Map<String,Subschema> defs,
+            final JsonNode jsonNode
+    ) throws UnsupportedSchemaFeature {
         if (!jsonNode.isObject()) {
             throw new UnsupportedSchemaFeature("subschema must be an object");
         }
@@ -89,27 +257,30 @@ public class SchemaParser {
         for (var entry : jsonNode.properties() ) {
             switch (entry.getKey()) {
                 case "type" -> types = parseTypes(entry.getValue());
-                case "properties" -> properties = parseProperties(entry.getValue());
-                case "items" -> itemsType = parseSubschema(entry.getValue());
+                case "properties" -> properties = parseProperties(defs, entry.getValue());
+                case "items" -> itemsType = parseSubschema(defs, entry.getValue());
                 case "enum" -> enumValues = parseEnumValues(entry.getValue());
                 case "$ref" -> reference = parseReference(entry.getValue());
                 default -> throw new UnsupportedSchemaFeature("unsupported subschema feature: " + entry.getKey());
             }
         }
         if (reference == null) {
-            return new Subschema(types, properties, itemsType, enumValues);
+            final boolean isInSelfReference = false;
+            return Subschema.fromFields(isInSelfReference, types, properties, itemsType, enumValues);
         }
 
         // --- Handle Reference (which is special) ---
         if (types != null || properties != null | itemsType != null || enumValues != null) {
             throw new UnsupportedSchemaFeature("reference with other fields not supported");
         }
-        // FIXME: This handles back-references but not forward references
-        final Subschema knownSubschema = globalDefs.get().get(reference.getName());
-        if (knownSubschema == null) {
-            throw new UnsupportedSchemaFeature("reference to #/$defs/" + reference.getName() + " isn't a backreference");
+        final Subschema knownSubschema = defs.get(reference.getName());
+        if (knownSubschema != null) {
+            // It's a back-reference, and we can go ahead and use it now.
+            return knownSubschema;
+        } else {
+            // It's a forward reference, so we need to create a reference and resolve it in a later pass
+            return Subschema.fromReference(reference);
         }
-        return knownSubschema;
     }
 
     private Types parseTypes(JsonNode jsonNode) throws UnsupportedSchemaFeature {

@@ -6,7 +6,7 @@ import java.util.stream.Collectors;
 
 /** Represents a properties list for an object. */
 public class Properties {
-    private final  Map<String, Subschema> properties;
+    private final Map<String, Subschema> properties;
 
     /** Constructor */
     public Properties(Map<String, Subschema> properties) {
@@ -16,6 +16,11 @@ public class Properties {
     /** Getter */
     public Map<String, Subschema> getProperties() {
         return properties;
+    }
+
+    /** Returns true if all child Subschema are resolved. */
+    public boolean allResolved() {
+        return properties.values().stream().allMatch(Subschema::isResolved);
     }
 
     @Override
