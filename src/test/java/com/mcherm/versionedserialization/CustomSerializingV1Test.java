@@ -76,11 +76,11 @@ public class CustomSerializingV1Test {
                 },\
                 "type":"object","properties":{\
                 "backgroundColor":{"$ref":"#/$defs/Color","x-javaType":"com.mcherm.versionedserialization.objects.contents.Color"},\
-                "listOfLamps":{"x-javaType":"java.util.List","x-javaElementType":"com.mcherm.versionedserialization.objects.contents.Lamp","type":"array","items":{"$ref":"#/$defs/Lamp","x-javaType":"java.util.List","x-javaElementType":"com.mcherm.versionedserialization.objects.contents.Lamp"}},\
-                "listOfStrings":{"x-javaType":"java.util.List","x-javaElementType":"java.lang.String","type":"array","items":{"type":"string","x-javaType":"java.util.List","x-javaElementType":"java.lang.String"}},\
-                "listOfWidgets":{"x-javaType":"java.util.List","x-javaElementType":"com.mcherm.versionedserialization.objects.contents.Widget","type":"array","items":{"$ref":"#/$defs/Widget","x-javaType":"java.util.List","x-javaElementType":"com.mcherm.versionedserialization.objects.contents.Widget"}},\
+                "listOfLamps":{"x-javaType":"java.util.List<com.mcherm.versionedserialization.objects.contents.Lamp>","type":"array","items":{"$ref":"#/$defs/Lamp","x-javaType":"java.util.List<com.mcherm.versionedserialization.objects.contents.Lamp>"}},\
+                "listOfStrings":{"x-javaType":"java.util.List<java.lang.String>","type":"array","items":{"type":"string","x-javaType":"java.util.List<java.lang.String>"}},\
+                "listOfWidgets":{"x-javaType":"java.util.List<com.mcherm.versionedserialization.objects.contents.Widget>","type":"array","items":{"$ref":"#/$defs/Widget","x-javaType":"java.util.List<com.mcherm.versionedserialization.objects.contents.Widget>"}},\
                 "nestedWidget":{"$ref":"#/$defs/Widget","x-javaType":"com.mcherm.versionedserialization.objects.contents.Widget"},\
-                "optionalValue":{"type":["string","null"],"x-javaType":"java.util.Optional","x-javaElementType":"java.lang.String"},\
+                "optionalValue":{"type":["string","null"],"x-javaType":"java.util.Optional<java.lang.String>"},\
                 "simpleGetter":{"type":"string","x-javaType":"java.lang.String"},\
                 "simplePublic":{"type":"string","x-javaType":"java.lang.String"}\
                 }}""";

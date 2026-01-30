@@ -119,9 +119,9 @@ public class SerializationUtil {
 
     /**
      * Creates a victools SchemaGeneratorConfigBuilder with the standard configuration
-     * used by this project. The generated schema includes "x-javaType" and
-     * "x-javaElementType" annotations on each property node, recording the declared
-     * Java type that produces that part of the schema.
+     * used by this project. The generated schema includes an "x-javaType" annotation
+     * on each property node with the full generic type signature (e.g.
+     * "java.util.List&lt;com.example.Widget&gt;").
      *
      * @return a configured SchemaGeneratorConfigBuilder
      */
@@ -150,17 +150,35 @@ public class SerializationUtil {
     }
 
     /**
-     * Annotates a schema property node with x-javaType (and x-javaElementType for
-     * parameterized types like List&lt;T&gt;). Uses getDeclaredType() so the original
-     * Java type is recorded (e.g. Optional rather than the unwrapped String).
+     * Annotates a schema property node with x-javaType using a full generic type
+     * signature (e.g. "java.util.List&lt;com.example.Widget&gt;"). Uses getDeclaredType()
+     * so the original Java type is recorded (e.g. Optional rather than the unwrapped String).
      */
     private static void addJavaTypeAnnotation(final ObjectNode node, final MemberScope<?, ?> scope) {
-        final var declaredType = scope.getDeclaredType();
-        node.put("x-javaType", declaredType.getErasedType().getName());
-        final var typeParams = declaredType.getTypeParameters();
-        if (typeParams != null && !typeParams.isEmpty()) {
-            node.put("x-javaElementType", typeParams.get(0).getErasedType().getName());
+        node.put("x-javaType", resolvedTypeToString(scope.getDeclaredType()));
+    }
+
+    /**
+     * Recursively builds a full generic type signature string from a ResolvedType.
+     * For example, {@code List<Money<USD>>} becomes
+     * {@code "java.util.List<com.example.Money<com.example.USD>>"}.
+     */
+    private static String resolvedTypeToString(final ResolvedType resolvedType) {
+        final String erasedName = resolvedType.getErasedType().getName();
+        final var typeParams = resolvedType.getTypeParameters();
+        if (typeParams == null || typeParams.isEmpty()) {
+            return erasedName;
         }
+        final StringBuilder sb = new StringBuilder(erasedName);
+        sb.append('<');
+        for (int i = 0; i < typeParams.size(); i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            sb.append(resolvedTypeToString(typeParams.get(i)));
+        }
+        sb.append('>');
+        return sb.toString();
     }
 
 }

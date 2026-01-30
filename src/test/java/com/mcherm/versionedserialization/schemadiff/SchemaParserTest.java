@@ -1,9 +1,13 @@
 package com.mcherm.versionedserialization.schemadiff;
 
+import com.mcherm.versionedserialization.schemadiff.schema.NormalSubschema;
 import com.mcherm.versionedserialization.schemadiff.schema.SchemaInfo;
+import com.mcherm.versionedserialization.schemadiff.schema.Subschema;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -246,6 +250,42 @@ public class SchemaParserTest {
                     "contents":{"type":["object"],"properties":{"first":{"type":["object"],"properties":{"only":{*"type":["object"],"properties":{"back":{*"type":["object"],"properties":{"only":{"$selfRef":"D"},"data":{"type":["string"]}}},"data":{"type":["string"]}}},"data":{"type":["string"]}}},"second":{"type":["object"],"properties":{"data":{"type":["string"]}}}}}\
                     }}""";
             assertEquals(expected, schemaInfo.toString());
+        } catch (UnsupportedSchemaFeature err) {
+            err.printStackTrace();
+            fail(err.getMessage());
+        }
+    }
+
+    @Test
+    public void testRefNodeCarriesJavaType() {
+        // Demonstrates that a $ref node can have x-javaType (as victools produces).
+        final String schema = """
+            {"$schema":"https://json-schema.org/draft/2020-12/schema",\
+            "$defs":{\
+            "Widget":{"type":"object","properties":{"name":{"type":"string","x-javaType":"java.lang.String"}}}\
+            },\
+            "type":"object","properties":{\
+            "w":{"$ref":"#/$defs/Widget","x-javaType":"com.example.Widget"},\
+            "plain":{"type":"string"}\
+            }}""";
+
+        final SchemaParser parser = new SchemaParser();
+        try {
+            final SchemaInfo schemaInfo = parser.parse(schema);
+            // The property "w" was a $ref with x-javaType; after resolution it should
+            // be a NormalSubschema that carries the javaType from the $ref node.
+            final Subschema wSubschema = schemaInfo.getProperties().getProperties().get("w");
+            final NormalSubschema wNormal = assertInstanceOf(NormalSubschema.class, wSubschema);
+            assertEquals("com.example.Widget", wNormal.getJavaType());
+
+            // The property "plain" has no x-javaType
+            final Subschema plainSubschema = schemaInfo.getProperties().getProperties().get("plain");
+            final NormalSubschema plainNormal = assertInstanceOf(NormalSubschema.class, plainSubschema);
+            assertNull(plainNormal.getJavaType());
+
+            // The inner "name" field inside Widget's def carries its own javaType
+            final NormalSubschema nameSubschema = (NormalSubschema) wNormal.getProperties().getProperties().get("name");
+            assertEquals("java.lang.String", nameSubschema.getJavaType());
         } catch (UnsupportedSchemaFeature err) {
             err.printStackTrace();
             fail(err.getMessage());

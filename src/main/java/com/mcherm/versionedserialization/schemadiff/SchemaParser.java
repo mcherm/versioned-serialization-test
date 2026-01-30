@@ -157,9 +157,10 @@ public class SchemaParser {
                     itemsType = resolveReferencesInSubschema(defs, resolutionState, itemsType);
                 }
                 final EnumValues enumValues = existingNormalSubschema.getEnumValues();
+                final String javaType = existingNormalSubschema.getJavaType();
 
                 final boolean isInSelfReference = resolutionState.hasSelfReferences();
-                return NormalSubschema.fromFields(isInSelfReference, types, properties, itemsType, enumValues);
+                return NormalSubschema.fromFields(isInSelfReference, types, properties, itemsType, enumValues, javaType);
             }
             case Reference reference -> {
                 // --- handle a reference ---
@@ -176,7 +177,7 @@ public class SchemaParser {
                     throw new UnsupportedSchemaFeature("Reference #/$defs/" + referenceName + " not found.");
                 }
                 if (definedSubschema.isResolved()) {
-                    return definedSubschema;
+                    return applyJavaTypeFromReference(reference, definedSubschema);
                 }
                 // ----- resolve it -----
                 resolutionState.pushName(referenceName);
@@ -186,7 +187,7 @@ public class SchemaParser {
                 defs.put(referenceName, resolvedSubschema);
                 resolutionState.markLoopCleared(referenceName);
                 // ----- all done -----
-                return resolvedSubschema;
+                return applyJavaTypeFromReference(reference, resolvedSubschema);
             }
         }
     }
@@ -214,6 +215,16 @@ public class SchemaParser {
             resolvedProperties.put(entry.getKey(), resolvedSubschema);
         }
         return new Properties(resolvedProperties);
+    }
+
+    /**
+     * If the Reference carries a javaType annotation, applies it to the resolved Subschema.
+     */
+    private Subschema applyJavaTypeFromReference(final Reference reference, final Subschema resolved) {
+        if (reference.getJavaType() != null && resolved instanceof NormalSubschema normalSubschema) {
+            return normalSubschema.withJavaType(reference.getJavaType());
+        }
+        return resolved;
     }
 
     /**
@@ -257,6 +268,7 @@ public class SchemaParser {
         Subschema itemsType = null;
         EnumValues enumValues = null;
         Reference reference = null;
+        String javaType = null;
         for (var entry : jsonNode.properties() ) {
             switch (entry.getKey()) {
                 case "type" -> types = parseTypes(entry.getValue());
@@ -264,8 +276,9 @@ public class SchemaParser {
                 case "items" -> itemsType = parseSubschema(defs, entry.getValue());
                 case "enum" -> enumValues = parseEnumValues(entry.getValue());
                 case "$ref" -> reference = parseReference(entry.getValue());
+                case "x-javaType" -> javaType = entry.getValue().asText();
                 default -> {
-                    // Silently ignore JSON Schema extension properties (x-javaType, etc.)
+                    // Silently ignore other JSON Schema extension properties
                     if (!entry.getKey().startsWith("x-")) {
                         throw new UnsupportedSchemaFeature("unsupported subschema feature: " + entry.getKey());
                     }
@@ -274,7 +287,7 @@ public class SchemaParser {
         }
         if (reference == null) {
             final boolean isInSelfReference = false;
-            return NormalSubschema.fromFields(isInSelfReference, types, properties, itemsType, enumValues);
+            return NormalSubschema.fromFields(isInSelfReference, types, properties, itemsType, enumValues, javaType);
         }
 
         // --- Handle Reference (which is special) ---
@@ -284,10 +297,13 @@ public class SchemaParser {
         final Subschema knownSubschema = defs.get(reference.getName());
         if (knownSubschema != null) {
             // It's a back-reference, and we can go ahead and use it now.
+            if (javaType != null && knownSubschema instanceof NormalSubschema normalSubschema) {
+                return normalSubschema.withJavaType(javaType);
+            }
             return knownSubschema;
         } else {
             // It's a forward reference, so we need to use the reference and resolve it in a later pass
-            return reference;
+            return new Reference(reference.getName(), javaType);
         }
     }
 

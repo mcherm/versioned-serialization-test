@@ -1,18 +1,31 @@
 package com.mcherm.versionedserialization.schemadiff.schema;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.util.Objects;
 
 /** Represents a reference. */
 public final class Reference implements Subschema {
     /** This is JUST the part after the "#/$defs/" and no other prefix is supported. */
     private final String name;
+    @Nullable
+    private final String javaType;
 
     public Reference(String name) {
+        this(name, null);
+    }
+
+    public Reference(String name, @Nullable String javaType) {
         this.name = name;
+        this.javaType = javaType;
     }
 
     public String getName() {
         return name;
+    }
+
+    public @Nullable String getJavaType() {
+        return javaType;
     }
 
     @Override

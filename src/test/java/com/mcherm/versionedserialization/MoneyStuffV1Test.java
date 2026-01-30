@@ -58,9 +58,9 @@ public class MoneyStuffV1Test {
             "Money(USD)":{"type":"object","properties":{"amount":{"type":"number","x-javaType":"java.math.BigDecimal"},"currency":{"type":"string","x-javaType":"com.mcherm.versionedserialization.objects.contents.USD"}}}\
             },\
             "type":"object","properties":{\
-            "balanceCa":{"$ref":"#/$defs/Money(CAD)","x-javaType":"com.mcherm.versionedserialization.objects.contents.Money","x-javaElementType":"com.mcherm.versionedserialization.objects.contents.CAD"},\
-            "balanceUs":{"$ref":"#/$defs/Money(USD)","x-javaType":"com.mcherm.versionedserialization.objects.contents.Money","x-javaElementType":"com.mcherm.versionedserialization.objects.contents.USD"},\
-            "debtUs":{"$ref":"#/$defs/Money(USD)","x-javaType":"com.mcherm.versionedserialization.objects.contents.Money","x-javaElementType":"com.mcherm.versionedserialization.objects.contents.USD"},\
+            "balanceCa":{"$ref":"#/$defs/Money(CAD)","x-javaType":"com.mcherm.versionedserialization.objects.contents.Money<com.mcherm.versionedserialization.objects.contents.CAD>"},\
+            "balanceUs":{"$ref":"#/$defs/Money(USD)","x-javaType":"com.mcherm.versionedserialization.objects.contents.Money<com.mcherm.versionedserialization.objects.contents.USD>"},\
+            "debtUs":{"$ref":"#/$defs/Money(USD)","x-javaType":"com.mcherm.versionedserialization.objects.contents.Money<com.mcherm.versionedserialization.objects.contents.USD>"},\
             "mainCurrency":{"type":"string","x-javaType":"com.mcherm.versionedserialization.objects.contents.Currency"}\
             }}""";
         assertEquals(expected, schema);

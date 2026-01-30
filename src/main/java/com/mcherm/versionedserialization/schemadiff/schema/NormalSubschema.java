@@ -25,6 +25,8 @@ public final class NormalSubschema implements Subschema {
     private final Subschema itemsType;
     @Nullable
     private final EnumValues enumValues;
+    @Nullable
+    private final String javaType;
 
 
     /** Constructor */
@@ -36,7 +38,8 @@ public final class NormalSubschema implements Subschema {
             @Nullable final Types types,
             @Nullable final Properties properties,
             @Nullable final Subschema itemsType,
-            @Nullable final EnumValues enumValues
+            @Nullable final EnumValues enumValues,
+            @Nullable final String javaType
     ) {
         this.isResolved = isResolved;
         this.inSelfReference = inSelfReference;
@@ -46,6 +49,7 @@ public final class NormalSubschema implements Subschema {
         this.properties = properties;
         this.itemsType = itemsType;
         this.enumValues = enumValues;
+        this.javaType = javaType;
     }
 
     public static NormalSubschema fromFields(
@@ -53,13 +57,22 @@ public final class NormalSubschema implements Subschema {
             @Nullable Types types,
             @Nullable Properties properties,
             @Nullable Subschema itemsType,
-            @Nullable EnumValues enumValues
+            @Nullable EnumValues enumValues,
+            @Nullable String javaType
     ) {
         final boolean isResolved =
                 (itemsType == null || itemsType.isResolved())
                         && (properties == null || properties.allResolved());
         final Reference reference = null;
-        return new NormalSubschema(isResolved, inSelfReference, reference, null, types, properties, itemsType, enumValues);
+        return new NormalSubschema(isResolved, inSelfReference, reference, null, types, properties, itemsType, enumValues, javaType);
+    }
+
+    /**
+     * Returns a copy of this NormalSubschema with the given javaType set.
+     * Used when resolving $ref nodes that carry an x-javaType annotation.
+     */
+    public NormalSubschema withJavaType(@Nullable String javaType) {
+        return new NormalSubschema(isResolved, inSelfReference, reference, selfReferenceName, types, properties, itemsType, enumValues, javaType);
     }
 
     public boolean isResolved() {
@@ -94,15 +107,19 @@ public final class NormalSubschema implements Subschema {
         return enumValues;
     }
 
+    public @Nullable String getJavaType() {
+        return javaType;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof NormalSubschema subschema)) return false;
-        return Objects.equals(types, subschema.types) && Objects.equals(properties, subschema.properties) && Objects.equals(itemsType, subschema.itemsType) && Objects.equals(enumValues, subschema.enumValues);
+        return Objects.equals(types, subschema.types) && Objects.equals(properties, subschema.properties) && Objects.equals(itemsType, subschema.itemsType) && Objects.equals(enumValues, subschema.enumValues) && Objects.equals(javaType, subschema.javaType);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(types, properties, itemsType, enumValues);
+        return Objects.hash(types, properties, itemsType, enumValues, javaType);
     }
 
     @Override
@@ -125,6 +142,9 @@ public final class NormalSubschema implements Subschema {
         }
         if (enumValues != null) {
             fields.add("\"enum\":" + enumValues);
+        }
+        if (javaType != null) {
+            fields.add("\"x-javaType\":\"" + javaType + "\"");
         }
         return "{" +
                 (inSelfReference ? "*" : "") + // FIXME: Remove eventually, just marks the inSelfReference items
