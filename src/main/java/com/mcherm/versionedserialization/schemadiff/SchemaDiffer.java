@@ -1,7 +1,7 @@
 package com.mcherm.versionedserialization.schemadiff;
 
-import com.mcherm.versionedserialization.schemadiff.deltas.Add;
 import com.mcherm.versionedserialization.schemadiff.deltas.Change;
+import com.mcherm.versionedserialization.schemadiff.deltas.CustomAdd;
 import com.mcherm.versionedserialization.schemadiff.deltas.Drop;
 import com.mcherm.versionedserialization.schemadiff.deltas.SchemaDeltas;
 import com.mcherm.versionedserialization.schemadiff.schema.NormalSubschema;
@@ -53,7 +53,7 @@ public class SchemaDiffer {
             } else if (firstSubschema != null && secondSubschema == null) {
                 schemaDeltas.getDrops().add(new Drop(prefix + field, firstSubschema));
             } else if (firstSubschema == null && secondSubschema != null) {
-                schemaDeltas.getAdds().add(new Add(prefix + field, secondSubschema));
+                schemaDeltas.getAdds().add(new CustomAdd(prefix + field, secondSubschema));
             } else {
                 if (!firstSubschema.equals(secondSubschema)) {
                     // --- First, check for two inner records that changed ---

@@ -5,19 +5,14 @@ import com.mcherm.versionedserialization.schemadiff.schema.Subschema;
 import java.util.Objects;
 
 /** Represents a change to a field. */
-public final class Change implements Alteration {
-    private final String fieldName;
+public final class Change extends Alteration {
     private final Subschema startingSubschema;
     private final Subschema endingSubschema;
 
     public Change(String fieldName, Subschema startingSubschema, Subschema endingSubschema) {
-        this.fieldName = fieldName;
+        super(fieldName);
         this.startingSubschema = startingSubschema;
         this.endingSubschema = endingSubschema;
-    }
-
-    public String getFieldName() {
-        return fieldName;
     }
 
     public Subschema getStartingSubschema() {
@@ -31,17 +26,17 @@ public final class Change implements Alteration {
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof Change change)) return false;
-        return Objects.equals(fieldName, change.fieldName) && Objects.equals(startingSubschema, change.startingSubschema) && Objects.equals(endingSubschema, change.endingSubschema);
+        return super.equals(o) && Objects.equals(startingSubschema, change.startingSubschema) && Objects.equals(endingSubschema, change.endingSubschema);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fieldName, startingSubschema, endingSubschema);
+        return Objects.hash(super.hashCode(), startingSubschema, endingSubschema);
     }
 
     @Override
     public String toString() {
-        return "Change " + fieldName + " from type " + startingSubschema + " to type " + endingSubschema;
+        return "Change " + getFieldName() + " from type " + startingSubschema + " to type " + endingSubschema;
     }
 
 }

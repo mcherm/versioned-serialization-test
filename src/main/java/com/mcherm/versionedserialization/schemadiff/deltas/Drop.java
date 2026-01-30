@@ -5,17 +5,12 @@ import com.mcherm.versionedserialization.schemadiff.schema.Subschema;
 import java.util.Objects;
 
 /** Represents dropping an existing field. */
-public final class Drop implements Alteration {
-    private final String fieldName;
+public final class Drop extends Alteration {
     private final Subschema subschema;
 
     public Drop(String fieldName, Subschema subschema) {
-        this.fieldName = fieldName;
+        super(fieldName);
         this.subschema = subschema;
-    }
-
-    public String getFieldName() {
-        return fieldName;
     }
 
     public Subschema getSubschema() {
@@ -25,16 +20,16 @@ public final class Drop implements Alteration {
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof Drop drop)) return false;
-        return Objects.equals(fieldName, drop.fieldName) && Objects.equals(subschema, drop.subschema);
+        return super.equals(o) && Objects.equals(subschema, drop.subschema);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fieldName, subschema);
+        return Objects.hash(super.hashCode(), subschema);
     }
 
     @Override
     public String toString() {
-        return "Drop " + fieldName + " of type " + subschema;
+        return "Drop " + getFieldName() + " of type " + subschema;
     }
 }

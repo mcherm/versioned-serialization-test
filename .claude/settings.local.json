@@ -4,7 +4,8 @@
       "Bash(mvn test)",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:json-schema.org)"
+      "WebFetch(domain:json-schema.org)",
+      "Bash(mvn compile:*)"
     ]
   }
 }
