@@ -4,14 +4,14 @@ import com.mcherm.versionedserialization.EvolutionTest;
 import com.mcherm.versionedserialization.SerializationUtil;
 import com.mcherm.versionedserialization.objects.CustomSerializingV1;
 import com.mcherm.versionedserialization.objects.SimpleV1;
-import com.mcherm.versionedserialization.schemadiff.deltas.Add;
-import com.mcherm.versionedserialization.schemadiff.deltas.Change;
-import com.mcherm.versionedserialization.schemadiff.deltas.Drop;
 import com.mcherm.versionedserialization.schemadiff.deltas.SchemaDeltas;
 import com.mcherm.versionedserialization.schemadiff.schema.SchemaInfo;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -19,13 +19,15 @@ import static org.junit.jupiter.api.Assertions.fail;
 /** Tests of SchemaDiffer. */
 public class SchemaDifferTest {
 
+    record Expect(String field, String effect) {}
+
     @Test
     public void testSchemaDiffer() {
         assertSchemaDeltas(
                 SimpleV1.class, EvolutionTest.SimpleV1AddOptionalField.class,
-                List.of("extra"),
-                List.of(),
-                List.of()
+                Set.of(
+                        new Expect("extra","DefaultingAdd")
+                )
         );
     }
 
@@ -33,9 +35,21 @@ public class SchemaDifferTest {
     public void testCustomSerializingUnchanged() {
         assertSchemaDeltas(
                 CustomSerializingV1.class, CustomSerializingV1.class,
-                List.of(),
-                List.of(),
-                List.of()
+                Set.of()
+        );
+    }
+
+    public static class SimpleV1PlusDate {
+        public String s;
+        public int i;
+        public LocalDate date;
+    }
+
+    @Test
+    public void testAddDate() {
+        assertSchemaDeltas(
+                SimpleV1.class, SimpleV1PlusDate.class,
+                Set.of(new Expect("date", "CustomAdd"))
         );
     }
 
@@ -47,9 +61,7 @@ public class SchemaDifferTest {
     public void testRemoveField() {
         assertSchemaDeltas(
                 SimpleV1.class, SimpleV1MinusS.class,
-                List.of(),
-                List.of("s"),
-                List.of()
+                Set.of(new Expect("s", "Drop"))
         );
     }
 
@@ -62,9 +74,7 @@ public class SchemaDifferTest {
     public void testChangeField() {
         assertSchemaDeltas(
                 SimpleV1.class, SimpleV1ChangeS.class,
-                List.of(),
-                List.of(),
-                List.of("s")
+                Set.of(new Expect("s", "Change"))
         );
     }
 
@@ -79,9 +89,7 @@ public class SchemaDifferTest {
     public void testDifferentClassNoChanges() {
         assertSchemaDeltas(
                 Foo.class, Bar.class,
-                List.of(),
-                List.of(),
-                List.of()
+                Set.of()
         );
     }
 
@@ -105,9 +113,7 @@ public class SchemaDifferTest {
     public void testChangeToNestedClass() {
         assertSchemaDeltas(
                 OuterV1.class, OuterV2.class,
-                List.of("inner/t"),
-                List.of(),
-                List.of()
+                Set.of(new Expect("inner/t", "DefaultingAdd"))
         );
     }
 
@@ -131,9 +137,7 @@ public class SchemaDifferTest {
     public void testChangeFieldInList() {
         assertSchemaDeltas(
                 ZHasListOfWidgetsV1.class, ZHasListOfWidgetsV2.class,
-                List.of("widgets[]t"),
-                List.of(),
-                List.of()
+                Set.of(new Expect("widgets[]t", "DefaultingAdd"))
         );
     }
 
@@ -148,22 +152,23 @@ public class SchemaDifferTest {
     public void testDoublyNested() {
         assertSchemaDeltas(
                 DoublyNestedV1.class, DoublyNestedV2.class,
-                List.of("inner/widgets[]t"),
-                List.of(),
-                List.of()
+                Set.of(new Expect("inner/widgets[]t", "DefaultingAdd"))
         );
     }
 
     /** Easy way to declare tests in this file. */
-    private void assertSchemaDeltas(Class<?> first, Class<?> second, List<String> adds, List<String> drops, List<String> changes) {
+    private void assertSchemaDeltas(Class<?> first, Class<?> second, Set<Expect> expected) {
         try {
             final SchemaParser parser = new SchemaParser();
             final SchemaInfo v1Schema = parser.parse(SerializationUtil.generateSchema(first));
             final SchemaInfo v2Schema = parser.parse(SerializationUtil.generateSchema(second));
             final SchemaDeltas schemaDeltas = SchemaDiffer.diff(v1Schema, v2Schema);
-            assertEquals(adds, schemaDeltas.getAdds().stream().map(Add::getFieldName).toList());
-            assertEquals(drops, schemaDeltas.getDrops().stream().map(Drop::getFieldName).toList());
-            assertEquals(changes, schemaDeltas.getChanges().stream().map(Change::getFieldName).toList());
+            assertEquals(
+                    expected,
+                    schemaDeltas.getDeltas().stream()
+                            .map(x -> new Expect(x.getFieldName(), x.getClass().getSimpleName()))
+                            .collect(Collectors.toSet())
+            );
         } catch (final UnsupportedSchemaFeature err) {
             err.printStackTrace();
             fail();

@@ -1,7 +1,10 @@
 package com.mcherm.versionedserialization.schemadiff;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.mcherm.versionedserialization.schemadiff.deltas.Add;
 import com.mcherm.versionedserialization.schemadiff.deltas.Change;
 import com.mcherm.versionedserialization.schemadiff.deltas.CustomAdd;
+import com.mcherm.versionedserialization.schemadiff.deltas.DefaultingAdd;
 import com.mcherm.versionedserialization.schemadiff.deltas.Drop;
 import com.mcherm.versionedserialization.schemadiff.deltas.SchemaDeltas;
 import com.mcherm.versionedserialization.schemadiff.schema.NormalSubschema;
@@ -11,6 +14,7 @@ import com.mcherm.versionedserialization.schemadiff.schema.Subschema;
 
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /** Contains a function to compare two SchemaInfo objects and report on the differences. */
@@ -51,9 +55,14 @@ public class SchemaDiffer {
             if (firstSubschema == null && secondSubschema == null) {
                 throw new RuntimeException("impossible for both be null");
             } else if (firstSubschema != null && secondSubschema == null) {
-                schemaDeltas.getDrops().add(new Drop(prefix + field, firstSubschema));
+                schemaDeltas.addAlteration(new Drop(prefix + field, firstSubschema));
             } else if (firstSubschema == null && secondSubschema != null) {
-                schemaDeltas.getAdds().add(new CustomAdd(prefix + field, secondSubschema));
+                // --- It's an Add, but which type? ---
+                final Optional<JsonNode> defaultValue = DefaultableClasses.getDefault(secondSubschema.getJavaType());
+                final Add add = defaultValue.isPresent()
+                        ? new DefaultingAdd(prefix + field, secondSubschema, defaultValue.get())
+                        : new CustomAdd(prefix + field, secondSubschema);
+                schemaDeltas.addAlteration(add);
             } else {
                 if (!firstSubschema.equals(secondSubschema)) {
                     // --- First, check for two inner records that changed ---
@@ -80,7 +89,7 @@ public class SchemaDiffer {
                         }
                     }
                     // --- Can't really do inner changes; report the change on this level ---
-                    schemaDeltas.getChanges().add(new Change(prefix + field, firstSubschema, secondSubschema));
+                    schemaDeltas.addAlteration(new Change(prefix + field, firstSubschema, secondSubschema));
                 }
             }
         }

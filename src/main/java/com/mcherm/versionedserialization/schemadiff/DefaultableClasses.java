@@ -2,6 +2,7 @@ package com.mcherm.versionedserialization.schemadiff;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.mcherm.versionedserialization.SerializationUtil;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
@@ -53,6 +54,27 @@ public class DefaultableClasses {
             }
         }
         return Optional.empty();
+    }
+
+    /**
+     * Find the default (if any) to use for a given Java class. If passed null instead of a valid string, this
+     * returns Empty.
+     *
+     * @param classString a string naming the class to be mapped (may include generic parameters like "java.util.List&lt;Widget&gt;")
+     * @return an Optional that wraps JsonNode that can be used as a default, or Empty if no default applies
+     */
+    public static Optional<JsonNode> getDefault(@Nullable final String classString) {
+        if (classString == null) {
+            return Optional.empty();
+        }
+        try {
+            // Strip generic parameters (e.g., "java.util.List<Widget>" -> "java.util.List")
+            final int genericStart = classString.indexOf('<');
+            final String className = genericStart == -1 ? classString : classString.substring(0, genericStart);
+            return getDefault(Class.forName(className));
+        } catch (ClassNotFoundException e) {
+            return Optional.empty();
+        }
     }
 
 }

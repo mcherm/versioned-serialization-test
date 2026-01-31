@@ -1,53 +1,40 @@
 package com.mcherm.versionedserialization.schemadiff.deltas;
 
-import com.mcherm.versionedserialization.schemadiff.schema.Subschema;
-
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-/** Data object to contain the differences between two schemas. */
+/** An object to contain the differences between two schemas. */
 public class SchemaDeltas {
-    private final List<Add> adds;
-    private final List<Drop> drops;
-    private final List<Change> changes;
+    private final List<Alteration> deltas;
 
     public SchemaDeltas() {
-        this.adds = new ArrayList<>();
-        this.drops = new ArrayList<>();
-        this.changes = new ArrayList<>();
+        this.deltas = new ArrayList<>();
     }
 
-    public List<Add> getAdds() {
-        return adds;
+    public void addAlteration(final Alteration alteration) {
+        this.deltas.add(alteration);
     }
 
-    public List<Drop> getDrops() {
-        return drops;
-    }
-
-    public List<Change> getChanges() {
-        return changes;
+    public List<Alteration> getDeltas() {
+        return Collections.unmodifiableList(deltas);
     }
 
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof SchemaDeltas that)) return false;
-        return Objects.equals(adds, that.adds) && Objects.equals(drops, that.drops) && Objects.equals(changes, that.changes);
+        return Objects.equals(deltas, that.deltas);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(adds, drops, changes);
+        return deltas.hashCode();
     }
 
     @Override
     public String toString() {
-        List<Alteration> alterations = new ArrayList<>();
-        alterations.addAll(adds);
-        alterations.addAll(drops);
-        alterations.addAll(changes);
-        return alterations.stream().map(Object::toString).collect(Collectors.joining("\n")) + "\n";
+        return deltas.stream().map(Object::toString).collect(Collectors.joining("\n")) + "\n";
     }
 }

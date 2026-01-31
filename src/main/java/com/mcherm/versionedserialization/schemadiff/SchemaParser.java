@@ -275,6 +275,7 @@ public class SchemaParser {
                 case "properties" -> properties = parseProperties(defs, entry.getValue());
                 case "items" -> itemsType = parseSubschema(defs, entry.getValue());
                 case "enum" -> enumValues = parseEnumValues(entry.getValue());
+                case "format" -> {} // ignore the format property
                 case "$ref" -> reference = parseReference(entry.getValue());
                 case "x-javaType" -> javaType = entry.getValue().asText();
                 default -> {
