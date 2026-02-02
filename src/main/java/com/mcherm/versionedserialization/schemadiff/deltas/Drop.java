@@ -5,7 +5,7 @@ import com.mcherm.versionedserialization.schemadiff.schema.Subschema;
 import java.util.Objects;
 
 /** Represents dropping an existing field. */
-public final class Drop extends Alteration {
+public final class Drop extends Delta {
     private final Subschema subschema;
 
     public Drop(String fieldName, Subschema subschema) {

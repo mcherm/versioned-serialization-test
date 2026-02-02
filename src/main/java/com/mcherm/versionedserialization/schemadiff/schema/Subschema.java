@@ -1,10 +1,5 @@
 package com.mcherm.versionedserialization.schemadiff.schema;
 
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 
 /**
  * A subschema... what things can be defined to be. We are applying some limitations,

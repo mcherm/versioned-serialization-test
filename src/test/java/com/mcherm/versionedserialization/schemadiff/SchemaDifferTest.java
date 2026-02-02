@@ -1,9 +1,9 @@
 package com.mcherm.versionedserialization.schemadiff;
 
-import com.mcherm.versionedserialization.EvolutionTest;
 import com.mcherm.versionedserialization.SerializationUtil;
 import com.mcherm.versionedserialization.objects.CustomSerializingV1;
 import com.mcherm.versionedserialization.objects.SimpleV1;
+import com.mcherm.versionedserialization.objects.SimpleV2a;
 import com.mcherm.versionedserialization.schemadiff.deltas.SchemaDeltas;
 import com.mcherm.versionedserialization.schemadiff.schema.SchemaInfo;
 import org.junit.jupiter.api.Test;
@@ -24,7 +24,7 @@ public class SchemaDifferTest {
     @Test
     public void testSchemaDiffer() {
         assertSchemaDeltas(
-                SimpleV1.class, EvolutionTest.SimpleV1AddOptionalField.class,
+                SimpleV1.class, SimpleV2a.class,
                 Set.of(
                         new Expect("extra","DefaultingAdd")
                 )
@@ -125,27 +125,26 @@ public class SchemaDifferTest {
         public String s;
         public String t;
     }
-    // FIXME: Note: I am naming this with a "Z" because until back-references work I need to hack the alphabetical order
-    public static class ZHasListOfWidgetsV1 {
+    public static class HasListOfWidgetsV1 {
         public List<WidgetV1> widgets;
     }
-    public static class ZHasListOfWidgetsV2 {
+    public static class HasListOfWidgetsV2 {
         public List<WidgetV2> widgets;
     }
 
     @Test
     public void testChangeFieldInList() {
         assertSchemaDeltas(
-                ZHasListOfWidgetsV1.class, ZHasListOfWidgetsV2.class,
+                HasListOfWidgetsV1.class, HasListOfWidgetsV2.class,
                 Set.of(new Expect("widgets[]t", "DefaultingAdd"))
         );
     }
 
     public static class DoublyNestedV1 {
-        public ZHasListOfWidgetsV1 inner;
+        public HasListOfWidgetsV1 inner;
     }
     public static class DoublyNestedV2 {
-        public ZHasListOfWidgetsV2 inner;
+        public HasListOfWidgetsV2 inner;
     }
 
     @Test
@@ -159,9 +158,8 @@ public class SchemaDifferTest {
     /** Easy way to declare tests in this file. */
     private void assertSchemaDeltas(Class<?> first, Class<?> second, Set<Expect> expected) {
         try {
-            final SchemaParser parser = new SchemaParser();
-            final SchemaInfo v1Schema = parser.parse(SerializationUtil.generateSchema(first));
-            final SchemaInfo v2Schema = parser.parse(SerializationUtil.generateSchema(second));
+            final SchemaInfo v1Schema = SchemaParser.parse(SerializationUtil.generateSchema(first));
+            final SchemaInfo v2Schema = SchemaParser.parse(SerializationUtil.generateSchema(second));
             final SchemaDeltas schemaDeltas = SchemaDiffer.diff(v1Schema, v2Schema);
             assertEquals(
                     expected,

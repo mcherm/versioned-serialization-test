@@ -30,7 +30,17 @@ public class SchemaParser {
      * it returns a SchemaInfo object, which is a parsed form of it. If it runs into anything
      * it can't handle it throws an UnsupportedSchemaFeature exception instead.
      */
-    public SchemaInfo parse(String schema) throws UnsupportedSchemaFeature {
+    public static SchemaInfo parse(String schema) throws UnsupportedSchemaFeature {
+        final SchemaParser schemaParser = new SchemaParser();
+        return schemaParser.parseSchema(schema);
+    }
+
+    /**
+     * Parse a schema. This is passed the contents of a JSON Schema file (as a String) and
+     * it returns a SchemaInfo object, which is a parsed form of it. If it runs into anything
+     * it can't handle it throws an UnsupportedSchemaFeature exception instead.
+     */
+    public SchemaInfo parseSchema(String schema) throws UnsupportedSchemaFeature {
         // --- parse to JSON tree ---
         final JsonNode jsonNode = SerializationUtil.deserializeAsNode(schema);
 

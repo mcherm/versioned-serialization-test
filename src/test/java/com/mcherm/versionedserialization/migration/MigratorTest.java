@@ -142,9 +142,8 @@ public class MigratorTest {
             final Class<?> targetClass = expectedOutput.getClass();
             final JsonNode sourceDocument = SerializationUtil.serializeAsNode(sourceObject);
             final JsonNode expectedTargetDocument = SerializationUtil.serializeAsNode(expectedOutput);
-            final SchemaParser schemaParser = new SchemaParser();
-            final SchemaInfo sourceSchema = schemaParser.parse(SerializationUtil.generateSchema(sourceClass));
-            final SchemaInfo targetSchema = schemaParser.parse(SerializationUtil.generateSchema(targetClass));
+            final SchemaInfo sourceSchema = SchemaParser.parse(SerializationUtil.generateSchema(sourceClass));
+            final SchemaInfo targetSchema = SchemaParser.parse(SerializationUtil.generateSchema(targetClass));
 
             // --- perform the work ---
             final Migrator migrator = new Migrator();

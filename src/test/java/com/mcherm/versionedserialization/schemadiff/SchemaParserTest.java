@@ -22,9 +22,8 @@ public class SchemaParserTest {
             "properties":{"i":{"type":"integer"},"s":{"type":"string"}}\
             }""";
 
-        final SchemaParser parser = new SchemaParser();
         try {
-            final SchemaInfo schemaInfo = parser.parse(schema);
+            final SchemaInfo schemaInfo = SchemaParser.parse(schema);
             final String expected = """
                     {"$schema":"https://json-schema.org/draft/2020-12/schema",\
                     "$defs":{},\
@@ -57,9 +56,8 @@ public class SchemaParserTest {
                 "simplePublic":{"type":"string"}\
                 }}""";
 
-        final SchemaParser parser = new SchemaParser();
         try {
-            final SchemaInfo schemaInfo = parser.parse(schema);
+            final SchemaInfo schemaInfo = SchemaParser.parse(schema);
             final String expected = """
                     {"$schema":"https://json-schema.org/draft/2020-12/schema",\
                     "$defs":{\
@@ -100,9 +98,8 @@ public class SchemaParserTest {
             "mainCurrency":{"type":"string"}\
             }}""";
 
-        final SchemaParser parser = new SchemaParser();
         try {
-            final SchemaInfo schemaInfo = parser.parse(schema);
+            final SchemaInfo schemaInfo = SchemaParser.parse(schema);
             final String expected = """
                     {"$schema":"https://json-schema.org/draft/2020-12/schema",\
                     "$defs":{\
@@ -136,9 +133,8 @@ public class SchemaParserTest {
             "nestlings":{"$ref":"#/$defs/SelfNested"}\
             }}""";
 
-        final SchemaParser parser = new SchemaParser();
         try {
-            final SchemaInfo schemaInfo = parser.parse(schema);
+            final SchemaInfo schemaInfo = SchemaParser.parse(schema);
             final String expected = """
                 {"$schema":"https://json-schema.org/draft/2020-12/schema",\
                 "$defs":{\
@@ -167,9 +163,8 @@ public class SchemaParserTest {
             "contents":{"$ref":"#/$defs/A"}\
             }}""";
 
-        final SchemaParser parser = new SchemaParser();
         try {
-            final SchemaInfo schemaInfo = parser.parse(schema);
+            final SchemaInfo schemaInfo = SchemaParser.parse(schema);
             final String expected = """
                 {"$schema":"https://json-schema.org/draft/2020-12/schema",\
                 "$defs":{\
@@ -199,9 +194,8 @@ public class SchemaParserTest {
             "contents":{"$ref":"#/$defs/A"}\
             }}""";
 
-        final SchemaParser parser = new SchemaParser();
         try {
-            final SchemaInfo schemaInfo = parser.parse(schema);
+            final SchemaInfo schemaInfo = SchemaParser.parse(schema);
             final String expected = """
                 {"$schema":"https://json-schema.org/draft/2020-12/schema",\
                 "$defs":{\
@@ -234,9 +228,8 @@ public class SchemaParserTest {
             "contents":{"$ref":"#/$defs/A"}\
             }}""";
 
-        final SchemaParser parser = new SchemaParser();
         try {
-            final SchemaInfo schemaInfo = parser.parse(schema);
+            final SchemaInfo schemaInfo = SchemaParser.parse(schema);
             final String expected = """
                     {"$schema":"https://json-schema.org/draft/2020-12/schema",\
                     "$defs":{\
@@ -269,9 +262,8 @@ public class SchemaParserTest {
             "plain":{"type":"string"}\
             }}""";
 
-        final SchemaParser parser = new SchemaParser();
         try {
-            final SchemaInfo schemaInfo = parser.parse(schema);
+            final SchemaInfo schemaInfo = SchemaParser.parse(schema);
             // The property "w" was a $ref with x-javaType; after resolution it should
             // be a NormalSubschema that carries the javaType from the $ref node.
             final Subschema wSubschema = schemaInfo.getProperties().getProperties().get("w");

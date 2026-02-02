@@ -8,17 +8,19 @@ import java.util.stream.Collectors;
 
 /** An object to contain the differences between two schemas. */
 public class SchemaDeltas {
-    private final List<Alteration> deltas;
+    private final List<Delta> deltas;
 
+    /** Constructor. */
     public SchemaDeltas() {
         this.deltas = new ArrayList<>();
     }
 
-    public void addAlteration(final Alteration alteration) {
-        this.deltas.add(alteration);
+    /** Adds a Delta to the SchemaDeltas. */
+    public void addDelta(final Delta delta) {
+        this.deltas.add(delta);
     }
 
-    public List<Alteration> getDeltas() {
+    public List<Delta> getDeltas() {
         return Collections.unmodifiableList(deltas);
     }
 

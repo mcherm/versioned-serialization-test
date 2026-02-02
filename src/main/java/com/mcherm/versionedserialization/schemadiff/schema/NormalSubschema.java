@@ -8,7 +8,7 @@ import java.util.Objects;
 
 /**
  * A NormalSubschema is one that isn't a reference or self-reference, just the description of a
- * specific schems.
+ * specific schema.
  */
 public final class NormalSubschema implements Subschema {
     private final boolean isResolved;

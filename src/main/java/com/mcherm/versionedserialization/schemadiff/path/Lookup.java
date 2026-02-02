@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.util.Optional;
 
-// FIXME: I'm not sure where this function should live so for now I'm sticking it here.
+/**
+ * This class contains some functions for looking up a field name within a JSON document.
+ */
 public class Lookup {
 
     /**

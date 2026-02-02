@@ -4,6 +4,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/** In a JSON schema, this is a list of types a subschema can take on. */
 public class Types {
     private final Set<PrimitiveType> types;
 

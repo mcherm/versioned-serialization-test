@@ -5,7 +5,7 @@ import com.mcherm.versionedserialization.schemadiff.schema.Subschema;
 import java.util.Objects;
 
 /** Represents adding a new field. */
-public sealed abstract class Add extends Alteration permits CustomAdd, DefaultingAdd {
+public sealed abstract class Add extends Delta permits CustomAdd, DefaultingAdd {
     private final Subschema subschema;
 
     public Add(String fieldName, Subschema subschema) {

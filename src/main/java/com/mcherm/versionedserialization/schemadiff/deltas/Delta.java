@@ -2,10 +2,14 @@ package com.mcherm.versionedserialization.schemadiff.deltas;
 
 import java.util.Objects;
 
-public sealed abstract class Alteration permits Add, Drop, Change {
+/**
+ * The abstract parent representing a specific change that needs to be made to a JSON
+ * document when converting from one format to another.
+ */
+public sealed abstract class Delta permits Add, Drop, Change {
     private final String fieldName;
 
-    public Alteration(String fieldName) {
+    public Delta(String fieldName) {
         this.fieldName = fieldName;
     }
 
@@ -14,7 +18,7 @@ public sealed abstract class Alteration permits Add, Drop, Change {
     }
 
     /**
-     * Returns true if this alteration requires the user to provide code to handle it,
+     * Returns true if this delta requires the user to provide code to handle it,
      * false if it can be handled automatically (for instance, by using a default value).
      */
     public boolean requiresCustomization() {
@@ -23,7 +27,7 @@ public sealed abstract class Alteration permits Add, Drop, Change {
 
     @Override
     public boolean equals(Object o) {
-        if (!(o instanceof Alteration that)) return false;
+        if (!(o instanceof Delta that)) return false;
         return Objects.equals(fieldName, that.fieldName);
     }
 

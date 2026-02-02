@@ -5,7 +5,7 @@ import com.mcherm.versionedserialization.schemadiff.schema.Subschema;
 import java.util.Objects;
 
 /** Represents a change to a field. */
-public final class Change extends Alteration {
+public final class Change extends Delta {
     private final Subschema startingSubschema;
     private final Subschema endingSubschema;
 

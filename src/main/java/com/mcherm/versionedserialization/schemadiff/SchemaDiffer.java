@@ -55,14 +55,14 @@ public class SchemaDiffer {
             if (firstSubschema == null && secondSubschema == null) {
                 throw new RuntimeException("impossible for both be null");
             } else if (firstSubschema != null && secondSubschema == null) {
-                schemaDeltas.addAlteration(new Drop(prefix + field, firstSubschema));
+                schemaDeltas.addDelta(new Drop(prefix + field, firstSubschema));
             } else if (firstSubschema == null && secondSubschema != null) {
                 // --- It's an Add, but which type? ---
                 final Optional<JsonNode> defaultValue = DefaultableClasses.getDefault(secondSubschema.getJavaType());
                 final Add add = defaultValue.isPresent()
                         ? new DefaultingAdd(prefix + field, secondSubschema, defaultValue.get())
                         : new CustomAdd(prefix + field, secondSubschema);
-                schemaDeltas.addAlteration(add);
+                schemaDeltas.addDelta(add);
             } else {
                 if (!firstSubschema.equals(secondSubschema)) {
                     // --- First, check for two inner records that changed ---
@@ -89,7 +89,7 @@ public class SchemaDiffer {
                         }
                     }
                     // --- Can't really do inner changes; report the change on this level ---
-                    schemaDeltas.addAlteration(new Change(prefix + field, firstSubschema, secondSubschema));
+                    schemaDeltas.addDelta(new Change(prefix + field, firstSubschema, secondSubschema));
                 }
             }
         }
