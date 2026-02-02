@@ -266,6 +266,9 @@ public class SchemaParser {
             final JsonNode jsonNode
     ) throws UnsupportedSchemaFeature {
         if (!jsonNode.isObject()) {
+            throw new UnsupportedSchemaFeature("properties must exist at top of schema");
+        }
+        if (!jsonNode.isObject()) {
             throw new UnsupportedSchemaFeature("properties must be an object");
         }
         final Map<String, Subschema> propData = new LinkedHashMap<>();
