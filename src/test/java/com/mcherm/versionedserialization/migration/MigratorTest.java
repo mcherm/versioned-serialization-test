@@ -11,6 +11,7 @@ import com.mcherm.versionedserialization.schemadiff.UnsupportedSchemaFeature;
 import com.mcherm.versionedserialization.schemadiff.schema.SchemaInfo;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -68,6 +69,66 @@ public class MigratorTest {
         record ObjectV2(int shelfNumber, WidgetV2 widget, String label) {} // added label
         final ObjectV1 sourceObject = new ObjectV1(46, new WidgetV1("Reebok", 6));
         final ObjectV2 expectedOutput = new ObjectV2(46, new WidgetV2("Reebok", ""), "");
+        final UpdateRules testUpdateRules = new UpdateRules(Map.of());
+        // --- run test ---
+        assertMigration(sourceObject, expectedOutput, testUpdateRules);
+    }
+
+    @Test
+    public void testBasicArrayOfObjects() {
+        record WidgetV1(String name, int shoeSize) {}
+        record WidgetV2(String name, String soleShape) {} // added soleShape; removed shoeSize
+        record ObjectV1(int shelfNumber, List<WidgetV1> widgets) {}
+        record ObjectV2(int shelfNumber, List<WidgetV2> widgets) {} // added label
+        final ObjectV1 sourceObject = new ObjectV1(46, List.of(new WidgetV1("Reebok", 6), new WidgetV1("Vans", 5)));
+        final ObjectV2 expectedOutput = new ObjectV2(46, List.of(new WidgetV2("Reebok", ""), new WidgetV2("Vans", "")));
+        final UpdateRules testUpdateRules = new UpdateRules(Map.of());
+        // --- run test ---
+        assertMigration(sourceObject, expectedOutput, testUpdateRules);
+    }
+
+    @Test
+    public void testEmptyArray() {
+        record WidgetV1(String name, int shoeSize) {}
+        record WidgetV2(String name, String soleShape) {}
+        record ObjectV1(int shelfNumber, List<WidgetV1> widgets) {}
+        record ObjectV2(int shelfNumber, List<WidgetV2> widgets) {}
+        final ObjectV1 sourceObject = new ObjectV1(46, List.of());
+        final ObjectV2 expectedOutput = new ObjectV2(46, List.of());
+        final UpdateRules testUpdateRules = new UpdateRules(Map.of());
+        // --- run test ---
+        assertMigration(sourceObject, expectedOutput, testUpdateRules);
+    }
+
+    @Test
+    public void testSingleElementArray() {
+        record WidgetV1(String name, int shoeSize) {}
+        record WidgetV2(String name, String soleShape) {}
+        record ObjectV1(int shelfNumber, List<WidgetV1> widgets) {}
+        record ObjectV2(int shelfNumber, List<WidgetV2> widgets) {}
+        final ObjectV1 sourceObject = new ObjectV1(46, List.of(new WidgetV1("Reebok", 6)));
+        final ObjectV2 expectedOutput = new ObjectV2(46, List.of(new WidgetV2("Reebok", "")));
+        final UpdateRules testUpdateRules = new UpdateRules(Map.of());
+        // --- run test ---
+        assertMigration(sourceObject, expectedOutput, testUpdateRules);
+    }
+
+    @Test
+    public void testNestedArrays() {
+        record ItemV1(String color) {}
+        record ItemV2(String color, String size) {}
+        record BoxV1(String label, List<ItemV1> items) {}
+        record BoxV2(String label, List<ItemV2> items) {}
+        record WarehouseV1(List<BoxV1> boxes) {}
+        record WarehouseV2(List<BoxV2> boxes) {}
+        final WarehouseV1 sourceObject = new WarehouseV1(List.of(
+                new BoxV1("A", List.of(new ItemV1("red"), new ItemV1("blue"))),
+                new BoxV1("B", List.of(new ItemV1("green")))
+        ));
+        final WarehouseV2 expectedOutput = new WarehouseV2(List.of(
+                new BoxV2("A", List.of(new ItemV2("red", ""), new ItemV2("blue", ""))),
+                new BoxV2("B", List.of(new ItemV2("green", "")))
+        ));
         final UpdateRules testUpdateRules = new UpdateRules(Map.of());
         // --- run test ---
         assertMigration(sourceObject, expectedOutput, testUpdateRules);

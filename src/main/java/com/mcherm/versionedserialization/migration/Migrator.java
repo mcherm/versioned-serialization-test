@@ -12,6 +12,8 @@ import com.mcherm.versionedserialization.schemadiff.deltas.SchemaDeltas;
 import com.mcherm.versionedserialization.schemadiff.path.Lookup;
 import com.mcherm.versionedserialization.schemadiff.schema.SchemaInfo;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 public class Migrator {
@@ -38,6 +40,10 @@ public class Migrator {
      * This is passed an Alteration and either an UpdateRule or Empty (and if the UpdateRule
      * requires customization the updateRule will never be Empty). It is also passed a
      * mutable destinationDocument.
+     * <p>
+     * The alteration's fieldName may contain "[]" segments indicating arrays that need
+     * to be iterated over. This method splits on "[]" and delegates to
+     * {@link #applyAcrossArrays} to handle the recursion.
      *
      * @param updateContext an UpdateContext which can be used to call UpdateRule.mapField()
      * @param alteration the particular Alteration to be processed
@@ -53,12 +59,73 @@ public class Migrator {
             final JsonNode destinationDocument
     ) {
         assert !alteration.requiresCustomization() || updateRule.isPresent();
+        final List<String> segments = Arrays.asList(alteration.getFieldName().split("\\[\\]"));
+        applyAcrossArrays(updateContext, alteration, updateRule, destinationDocument, segments);
+    }
 
+    /**
+     * Recursively processes segments of a fieldName that has been split on "[]".
+     * If only one segment remains, this is the leaf case and we apply the actual change
+     * via {@link #applyLeafChange}. Otherwise, the first segment is a path to an array
+     * node; we navigate to it, then loop over each element and recurse with the
+     * remaining segments.
+     *
+     * @param updateContext an UpdateContext which can be used to call UpdateRule.mapField()
+     * @param alteration the particular Alteration to be processed
+     * @param updateRule either an UpdateRule that applies or Empty
+     * @param currentNode the node to navigate from
+     * @param remainingSegments the segments still to be processed
+     */
+    private void applyAcrossArrays(
+            final UpdateContext updateContext,
+            final Alteration alteration,
+            final Optional<UpdateRule> updateRule,
+            final JsonNode currentNode,
+            final List<String> remainingSegments
+    ) {
+        if (remainingSegments.size() == 1) {
+            applyLeafChange(updateContext, alteration, updateRule, currentNode, remainingSegments.getFirst());
+        } else {
+            final String pathToArray = remainingSegments.getFirst();
+            final JsonNode arrayNode = Lookup.getField(pathToArray, currentNode)
+                    .orElseThrow(() -> new RuntimeException(
+                            "Cannot navigate to array at '" + pathToArray + "' in the document."
+                    ));
+            if (!arrayNode.isArray()) {
+                throw new RuntimeException(
+                        "Expected an array at '" + pathToArray + "' but found " + arrayNode.getNodeType()
+                );
+            }
+            final List<String> rest = remainingSegments.subList(1, remainingSegments.size());
+            for (JsonNode element : arrayNode) {
+                applyAcrossArrays(updateContext, alteration, updateRule, element, rest);
+            }
+        }
+    }
+
+    /**
+     * Applies a single alteration at a leaf location in the JSON tree. The relativePath
+     * is a "/"-separated path (no "[]") relative to baseNode.
+     *
+     * @param updateContext an UpdateContext which can be used to call UpdateRule.mapField()
+     * @param alteration the particular Alteration to be processed
+     * @param updateRule either an UpdateRule that applies or Empty; and it will never be
+     *                   empty if the Alteration requires customization.
+     * @param baseNode the node to navigate from using relativePath
+     * @param relativePath a "/"-separated path to the field to modify
+     */
+    private void applyLeafChange(
+            final UpdateContext updateContext,
+            final Alteration alteration,
+            final Optional<UpdateRule> updateRule,
+            final JsonNode baseNode,
+            final String relativePath
+    ) {
         // --- Navigate to the proper location in the Json ---
         final Lookup.ParentAndField parentAndField = Lookup.getParentAndField(
-                alteration.getFieldName(), destinationDocument
+                relativePath, baseNode
         ).orElseThrow(() -> new RuntimeException(
-                "Cannot navigate to field '" + alteration.getFieldName() + "' in the document."
+                "Cannot navigate to field '" + relativePath + "' in the document."
         ));
         final ObjectNode parentNode = parentAndField.parentNode();
         final Optional<JsonNode> existingNode = parentAndField.targetNode();
