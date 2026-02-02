@@ -6,6 +6,17 @@ import com.mcherm.versionedserialization.objects.SimpleV1;
 import com.mcherm.versionedserialization.objects.SimpleV2a;
 import com.mcherm.versionedserialization.objects.SimpleV2b;
 import com.mcherm.versionedserialization.objects.SimpleV2c;
+import com.mcherm.versionedserialization.objects.TypedV1;
+import com.mcherm.versionedserialization.objects.TypedV2a;
+import com.mcherm.versionedserialization.objects.TypedV2b;
+import com.mcherm.versionedserialization.objects.TypedV2c;
+import com.mcherm.versionedserialization.objects.TypedV2d;
+import com.mcherm.versionedserialization.objects.MappedV1;
+import com.mcherm.versionedserialization.objects.MappedV2a;
+import com.mcherm.versionedserialization.objects.MappedV2b;
+import com.mcherm.versionedserialization.objects.MappedV2c;
+import com.mcherm.versionedserialization.objects.RenamedV1;
+import com.mcherm.versionedserialization.objects.RenamedV2a;
 import com.mcherm.versionedserialization.schemadiff.deltas.SchemaDeltas;
 import com.mcherm.versionedserialization.schemadiff.schema.SchemaInfo;
 import org.junit.jupiter.api.Test;
@@ -172,6 +183,95 @@ public class SchemaDifferTest {
         assertSchemaDeltas(
                 DoublyNestedV1.class, DoublyNestedV2.class,
                 Set.of(new Expect("inner/widgets[]t", "DefaultingAdd"))
+        );
+    }
+
+    // ===== Typed tests: various field type additions and changes =====
+
+    @Test
+    public void testTyped_V1V2a_addPrimitiveBoolean() {
+        assertSchemaDeltas(
+                TypedV1.class, TypedV2a.class,
+                Set.of(
+                        new Expect("active", "DefaultingAdd")
+                )
+        );
+    }
+
+    @Test
+    public void testTyped_V1V2b_addListOfStrings() {
+        assertSchemaDeltas(
+                TypedV1.class, TypedV2b.class,
+                Set.of(
+                        new Expect("tags", "DefaultingAdd")
+                )
+        );
+    }
+
+    @Test
+    public void testTyped_V1V2c_changeFieldType() {
+        assertSchemaDeltas(
+                TypedV1.class, TypedV2c.class,
+                Set.of(
+                        new Expect("count", "Change")
+                )
+        );
+    }
+
+    @Test
+    public void testTyped_V1V2d_addEnumField() {
+        assertSchemaDeltas(
+                TypedV1.class, TypedV2d.class,
+                Set.of(
+                        new Expect("color", "CustomAdd")
+                )
+        );
+    }
+
+    // ===== Mapped tests: Map fields =====
+
+    @Test
+    public void testMapped_V1_unchanged() {
+        assertSchemaDeltas(
+                MappedV1.class, MappedV1.class,
+                Set.of()
+        );
+    }
+
+    @Test
+    public void testMapped_V1V2a_changeMapValueType() {
+        // Map<String,String> -> Map<String,Integer>: detected as Change via differing x-javaType
+        assertSchemaDeltas(
+                MappedV1.class, MappedV2a.class,
+                Set.of(
+                        new Expect("metadata", "Change")
+                )
+        );
+    }
+
+    @Test
+    public void testMapped_V2bV2c_changeMapObjectValueType() {
+        // Map<String,EmployeeV1> -> Map<String,EmployeeV2>: even though EmployeeV2 only adds
+        // a field, Victools generates both as {"type":"object"} with no properties, so the
+        // structural change is invisible. The Change is detected only via differing x-javaType.
+        assertSchemaDeltas(
+                MappedV2b.class, MappedV2c.class,
+                Set.of(
+                        new Expect("metadata", "Change")
+                )
+        );
+    }
+
+    // ===== Renamed tests: field renaming =====
+
+    @Test
+    public void testRenamed_V1V2a_fieldRenamed() {
+        assertSchemaDeltas(
+                RenamedV1.class, RenamedV2a.class,
+                Set.of(
+                        new Expect("name", "Drop"),
+                        new Expect("fullName", "DefaultingAdd")
+                )
         );
     }
 

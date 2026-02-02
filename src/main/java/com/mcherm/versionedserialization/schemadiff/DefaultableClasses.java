@@ -5,6 +5,7 @@ import com.mcherm.versionedserialization.SerializationUtil;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -42,19 +43,49 @@ public class DefaultableClasses {
     }
 
     /**
-     * Find the default (if any) to use for a given Java class.
+     * Find the default (if any) to use for a given Java class. Primitive types are
+     * handled by mapping them to their corresponding wrapper classes.
      *
      * @param clazz the class to be mapped
      * @return an Optional that wraps JsonNode that can be used as a default, or Empty if no default applies
      */
     public static Optional<JsonNode> getDefault(final Class<?> clazz) {
+        final Class<?> lookupClass = clazz.isPrimitive()
+                ? primitiveToWrapper(clazz)
+                : clazz;
         for (DefaultingClass entry : defaults) {
-            if (entry.clazz.isAssignableFrom(clazz)) {
+            if (entry.clazz.isAssignableFrom(lookupClass)) {
                 return Optional.of(entry.defaultValue);
             }
         }
         return Optional.empty();
     }
+
+    /**
+     * Maps a primitive class (e.g. {@code int.class}) to its wrapper class (e.g. {@code Integer.class}).
+     */
+    private static Class<?> primitiveToWrapper(final Class<?> primitiveClass) {
+        if (primitiveClass == boolean.class) return Boolean.class;
+        if (primitiveClass == byte.class) return Byte.class;
+        if (primitiveClass == short.class) return Short.class;
+        if (primitiveClass == int.class) return Integer.class;
+        if (primitiveClass == long.class) return Long.class;
+        if (primitiveClass == float.class) return Float.class;
+        if (primitiveClass == double.class) return Double.class;
+        if (primitiveClass == char.class) return Character.class;
+        return primitiveClass;
+    }
+
+    private static final Map<String, Class<?>> PRIMITIVE_TYPES_BY_NAME = Map.of(
+            "boolean", boolean.class,
+            "byte", byte.class,
+            "short", short.class,
+            "int", int.class,
+            "long", long.class,
+            "float", float.class,
+            "double", double.class,
+            "char", char.class
+    );
 
     /**
      * Find the default (if any) to use for a given Java class. If passed null instead of a valid string, this
@@ -71,7 +102,13 @@ public class DefaultableClasses {
             // Strip generic parameters (e.g., "java.util.List<Widget>" -> "java.util.List")
             final int genericStart = classString.indexOf('<');
             final String className = genericStart == -1 ? classString : classString.substring(0, genericStart);
-            return getDefault(Class.forName(className));
+            // Check for primitive type names like "boolean", "int", etc. since
+            // Class.forName doesn't handle them.
+            Class<?> clazz = PRIMITIVE_TYPES_BY_NAME.get(className);
+            if (clazz == null) {
+                clazz = Class.forName(className);
+            }
+            return getDefault(clazz);
         } catch (ClassNotFoundException e) {
             return Optional.empty();
         }

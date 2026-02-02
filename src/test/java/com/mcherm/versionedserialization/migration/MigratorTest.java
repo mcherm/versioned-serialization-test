@@ -6,6 +6,13 @@ import com.mcherm.versionedserialization.SerializationUtil;
 import com.mcherm.versionedserialization.objects.SimpleV1;
 import com.mcherm.versionedserialization.objects.SimpleV2a;
 import com.mcherm.versionedserialization.objects.SimpleV2b;
+import com.mcherm.versionedserialization.objects.TypedV1;
+import com.mcherm.versionedserialization.objects.TypedV2a;
+import com.mcherm.versionedserialization.objects.TypedV2b;
+import com.mcherm.versionedserialization.objects.TypedV2c;
+import com.mcherm.versionedserialization.objects.MappedV1;
+import com.mcherm.versionedserialization.objects.RenamedV1;
+import com.mcherm.versionedserialization.objects.RenamedV2a;
 import com.mcherm.versionedserialization.schemadiff.SchemaParser;
 import com.mcherm.versionedserialization.schemadiff.UnsupportedSchemaFeature;
 import com.mcherm.versionedserialization.schemadiff.schema.SchemaInfo;
@@ -134,6 +141,82 @@ public class MigratorTest {
         assertMigration(sourceObject, expectedOutput, testUpdateRules);
     }
 
+
+    // ===== Typed tests: various field type additions and changes =====
+
+    @Test
+    public void testTyped_V1ToV2a_addPrimitiveBoolean() {
+        final TypedV1 source = new TypedV1();
+        source.name = "test";
+        source.count = 5;
+        final TypedV2a expected = new TypedV2a();
+        expected.name = "test";
+        expected.count = 5;
+        expected.active = false;
+        final UpdateRules testUpdateRules = new UpdateRules(Map.of());
+        // --- run test ---
+        assertMigration(source, expected, testUpdateRules);
+    }
+
+    @Test
+    public void testTyped_V1ToV2b_addListOfStrings() {
+        final TypedV1 source = new TypedV1();
+        source.name = "test";
+        source.count = 5;
+        final TypedV2b expected = new TypedV2b();
+        expected.name = "test";
+        expected.count = 5;
+        expected.tags = List.of();
+        final UpdateRules testUpdateRules = new UpdateRules(Map.of());
+        // --- run test ---
+        assertMigration(source, expected, testUpdateRules);
+    }
+
+    @Test
+    public void testTyped_V1ToV2c_changeFieldType() {
+        final TypedV1 source = new TypedV1();
+        source.name = "test";
+        source.count = 5;
+        final TypedV2c expected = new TypedV2c();
+        expected.name = "test";
+        expected.count = "5";
+        final UpdateRules testUpdateRules = new UpdateRules(Map.of(
+                "count", (UpdateContext ctx, String field) ->
+                        TextNode.valueOf(ctx.getSourceValue("count").map(JsonNode::asText).orElse(""))
+        ));
+        // --- run test ---
+        assertMigration(source, expected, testUpdateRules);
+    }
+
+    // ===== Mapped tests: Map fields =====
+
+    @Test
+    public void testMapped_V1_migration() {
+        final MappedV1 source = new MappedV1();
+        source.name = "test";
+        source.metadata = Map.of("key", "value");
+        final UpdateRules testUpdateRules = new UpdateRules(Map.of());
+        // --- run test ---
+        assertMigration(source, source, testUpdateRules);
+    }
+
+    // ===== Renamed tests: field renaming with UpdateRule =====
+
+    @Test
+    public void testRenamed_V1ToV2a_withRule() {
+        final RenamedV1 source = new RenamedV1();
+        source.name = "Alice";
+        source.value = 42;
+        final RenamedV2a expected = new RenamedV2a();
+        expected.fullName = "Alice";
+        expected.value = 42;
+        final UpdateRules testUpdateRules = new UpdateRules(Map.of(
+                "fullName", (UpdateContext ctx, String field) ->
+                        ctx.getSourceValue("name").orElse(TextNode.valueOf(""))
+        ));
+        // --- run test ---
+        assertMigration(source, expected, testUpdateRules);
+    }
 
     /** Easy way to declare tests in this file. */
     private void assertMigration(Object sourceObject, Object expectedOutput, UpdateRules updateRules) {
