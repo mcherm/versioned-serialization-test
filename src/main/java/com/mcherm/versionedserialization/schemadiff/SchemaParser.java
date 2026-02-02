@@ -2,6 +2,7 @@ package com.mcherm.versionedserialization.schemadiff;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.mcherm.versionedserialization.SerializationUtil;
+import com.mcherm.versionedserialization.schemadiff.schema.AnyOfSubschema;
 import com.mcherm.versionedserialization.schemadiff.schema.EnumValues;
 import com.mcherm.versionedserialization.schemadiff.schema.NormalSubschema;
 import com.mcherm.versionedserialization.schemadiff.schema.PrimitiveType;
@@ -168,9 +169,18 @@ public class SchemaParser {
                 }
                 final EnumValues enumValues = existingNormalSubschema.getEnumValues();
                 final String javaType = existingNormalSubschema.getJavaType();
+                final String constValue = existingNormalSubschema.getConstValue();
 
                 final boolean isInSelfReference = resolutionState.hasSelfReferences();
-                return NormalSubschema.fromFields(isInSelfReference, types, properties, itemsType, enumValues, javaType);
+                return NormalSubschema.fromFields(isInSelfReference, types, properties, itemsType, enumValues, javaType, constValue);
+            }
+            case AnyOfSubschema anyOfSubschema -> {
+                // --- handle anyOf: resolve each option ---
+                final List<Subschema> resolvedOptions = new ArrayList<>();
+                for (Subschema option : anyOfSubschema.getOptions()) {
+                    resolvedOptions.add(resolveReferencesInSubschema(defs, resolutionState, option));
+                }
+                return new AnyOfSubschema(resolvedOptions, anyOfSubschema.getJavaType());
             }
             case Reference reference -> {
                 // --- handle a reference ---
@@ -187,7 +197,7 @@ public class SchemaParser {
                     throw new UnsupportedSchemaFeature("Reference #/$defs/" + referenceName + " not found.");
                 }
                 if (definedSubschema.isResolved()) {
-                    return applyJavaTypeFromReference(reference, definedSubschema);
+                    return applyOverridesFromReference(reference, definedSubschema);
                 }
                 // ----- resolve it -----
                 resolutionState.pushName(referenceName);
@@ -197,7 +207,7 @@ public class SchemaParser {
                 defs.put(referenceName, resolvedSubschema);
                 resolutionState.markLoopCleared(referenceName);
                 // ----- all done -----
-                return applyJavaTypeFromReference(reference, resolvedSubschema);
+                return applyOverridesFromReference(reference, resolvedSubschema);
             }
         }
     }
@@ -228,11 +238,18 @@ public class SchemaParser {
     }
 
     /**
-     * If the Reference carries a javaType annotation, applies it to the resolved Subschema.
+     * Applies any overrides carried by a Reference (javaType, sibling types/properties)
+     * to the resolved Subschema.
      */
-    private Subschema applyJavaTypeFromReference(final Reference reference, final Subschema resolved) {
-        if (reference.getJavaType() != null && resolved instanceof NormalSubschema normalSubschema) {
-            return normalSubschema.withJavaType(reference.getJavaType());
+    private Subschema applyOverridesFromReference(final Reference reference, final Subschema resolved) {
+        if (resolved instanceof NormalSubschema normalSubschema) {
+            if (reference.hasOverrides()) {
+                return normalSubschema.withMergedOverrides(
+                        reference.getOverrideTypes(), reference.getOverrideProperties(), reference.getJavaType());
+            }
+            if (reference.getJavaType() != null) {
+                return normalSubschema.withJavaType(reference.getJavaType());
+            }
         }
         return resolved;
     }
@@ -279,13 +296,18 @@ public class SchemaParser {
         EnumValues enumValues = null;
         Reference reference = null;
         String javaType = null;
+        String constValue = null;
+        List<Subschema> anyOfOptions = null;
         for (var entry : jsonNode.properties() ) {
             switch (entry.getKey()) {
                 case "type" -> types = parseTypes(entry.getValue());
                 case "properties" -> properties = parseProperties(defs, entry.getValue());
                 case "items" -> itemsType = parseSubschema(defs, entry.getValue());
                 case "enum" -> enumValues = parseEnumValues(entry.getValue());
-                case "format" -> {} // ignore the format property
+                case "const" -> constValue = entry.getValue().asText();
+                case "required" -> {} // ignore the "required" property
+                case "format" -> {} // ignore the "format" property
+                case "anyOf" -> anyOfOptions = parseAnyOf(defs, entry.getValue());
                 case "$ref" -> reference = parseReference(entry.getValue());
                 case "x-javaType" -> javaType = entry.getValue().asText();
                 default -> {
@@ -296,14 +318,32 @@ public class SchemaParser {
                 }
             }
         }
+
+        // --- Handle anyOf (standalone, not combined with other structural fields) ---
+        if (anyOfOptions != null) {
+            if (types != null || properties != null || itemsType != null || enumValues != null || reference != null) {
+                throw new UnsupportedSchemaFeature("anyOf combined with other structural fields not yet supported");
+            }
+            return new AnyOfSubschema(anyOfOptions, javaType);
+        }
+
         if (reference == null) {
             final boolean isInSelfReference = false;
-            return NormalSubschema.fromFields(isInSelfReference, types, properties, itemsType, enumValues, javaType);
+            return NormalSubschema.fromFields(isInSelfReference, types, properties, itemsType, enumValues, javaType, constValue);
         }
 
         // --- Handle Reference (which is special) ---
-        if (types != null || properties != null | itemsType != null || enumValues != null) {
-            throw new UnsupportedSchemaFeature("reference with other fields not supported");
+        final boolean hasSiblingFields = types != null || properties != null || itemsType != null || enumValues != null;
+        if (hasSiblingFields) {
+            // $ref with sibling fields (JSON Schema 2020-12): merge when resolving.
+            final Subschema knownSubschema = defs.get(reference.getName());
+            if (knownSubschema != null && knownSubschema instanceof NormalSubschema knownNormal) {
+                // Back-reference: merge immediately
+                return knownNormal.withMergedOverrides(types, properties, javaType);
+            } else {
+                // Forward reference: store overrides on Reference for later merge
+                return new Reference(reference.getName(), javaType, types, properties);
+            }
         }
         final Subschema knownSubschema = defs.get(reference.getName());
         if (knownSubschema != null) {
@@ -316,6 +356,21 @@ public class SchemaParser {
             // It's a forward reference, so we need to use the reference and resolve it in a later pass
             return new Reference(reference.getName(), javaType);
         }
+    }
+
+    private List<Subschema> parseAnyOf(
+            final Map<String,Subschema> defs,
+            final JsonNode jsonNode
+    ) throws UnsupportedSchemaFeature {
+        if (!jsonNode.isArray()) {
+            throw new UnsupportedSchemaFeature("anyOf must be an array");
+        }
+        final List<Subschema> options = new ArrayList<>();
+        var iter = jsonNode.elements();
+        while (iter.hasNext()) {
+            options.add(parseSubschema(defs, iter.next()));
+        }
+        return options;
     }
 
     private Types parseTypes(JsonNode jsonNode) throws UnsupportedSchemaFeature {

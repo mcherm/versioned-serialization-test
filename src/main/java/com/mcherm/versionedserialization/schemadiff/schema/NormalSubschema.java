@@ -27,6 +27,8 @@ public final class NormalSubschema implements Subschema {
     private final EnumValues enumValues;
     @Nullable
     private final String javaType;
+    @Nullable
+    private final String constValue;
 
 
     /** Constructor */
@@ -39,7 +41,8 @@ public final class NormalSubschema implements Subschema {
             @Nullable final Properties properties,
             @Nullable final Subschema itemsType,
             @Nullable final EnumValues enumValues,
-            @Nullable final String javaType
+            @Nullable final String javaType,
+            @Nullable final String constValue
     ) {
         this.isResolved = isResolved;
         this.inSelfReference = inSelfReference;
@@ -50,29 +53,31 @@ public final class NormalSubschema implements Subschema {
         this.itemsType = itemsType;
         this.enumValues = enumValues;
         this.javaType = javaType;
+        this.constValue = constValue;
     }
 
     public static NormalSubschema fromFields(
             final boolean inSelfReference,
-            @Nullable Types types,
-            @Nullable Properties properties,
-            @Nullable Subschema itemsType,
-            @Nullable EnumValues enumValues,
-            @Nullable String javaType
+            @Nullable final Types types,
+            @Nullable final Properties properties,
+            @Nullable final Subschema itemsType,
+            @Nullable final EnumValues enumValues,
+            @Nullable final String javaType,
+            @Nullable final String constValue
     ) {
         final boolean isResolved =
                 (itemsType == null || itemsType.isResolved())
                         && (properties == null || properties.allResolved());
         final Reference reference = null;
-        return new NormalSubschema(isResolved, inSelfReference, reference, null, types, properties, itemsType, enumValues, javaType);
+        return new NormalSubschema(isResolved, inSelfReference, reference, null, types, properties, itemsType, enumValues, javaType, constValue);
     }
 
     /**
      * Returns a copy of this NormalSubschema with the given javaType set.
      * Used when resolving $ref nodes that carry an x-javaType annotation.
      */
-    public NormalSubschema withJavaType(@Nullable String javaType) {
-        return new NormalSubschema(isResolved, inSelfReference, reference, selfReferenceName, types, properties, itemsType, enumValues, javaType);
+    public NormalSubschema withJavaType(@Nullable final String javaType) {
+        return new NormalSubschema(isResolved, inSelfReference, reference, selfReferenceName, types, properties, itemsType, enumValues, javaType, constValue);
     }
 
     public boolean isResolved() {
@@ -111,15 +116,46 @@ public final class NormalSubschema implements Subschema {
         return javaType;
     }
 
+    public @Nullable String getConstValue() {
+        return constValue;
+    }
+
+    /**
+     * Returns a new NormalSubschema that merges the given override fields into this one.
+     * Used when resolving a $ref that has sibling fields (JSON Schema 2020-12 semantics:
+     * the ref and siblings are all applied together). Override properties win on key conflict.
+     */
+    public NormalSubschema withMergedOverrides(
+            @Nullable final Types overrideTypes,
+            @Nullable final Properties overrideProperties,
+            @Nullable final String overrideJavaType
+    ) {
+        final Types mergedTypes = overrideTypes != null ? overrideTypes : this.types;
+        final Properties mergedProperties;
+        if (overrideProperties != null && this.properties != null) {
+            // Union of both property maps; override properties win on key conflict
+            final java.util.LinkedHashMap<String, Subschema> merged = new java.util.LinkedHashMap<>(this.properties.getProperties());
+            merged.putAll(overrideProperties.getProperties());
+            mergedProperties = new Properties(merged);
+        } else if (overrideProperties != null) {
+            mergedProperties = overrideProperties;
+        } else {
+            mergedProperties = this.properties;
+        }
+        final String mergedJavaType = overrideJavaType == null ? this.javaType : overrideJavaType;
+        return new NormalSubschema(isResolved, inSelfReference, reference, selfReferenceName,
+                mergedTypes, mergedProperties, itemsType, enumValues, mergedJavaType, constValue);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof NormalSubschema subschema)) return false;
-        return Objects.equals(types, subschema.types) && Objects.equals(properties, subschema.properties) && Objects.equals(itemsType, subschema.itemsType) && Objects.equals(enumValues, subschema.enumValues) && Objects.equals(javaType, subschema.javaType);
+        return Objects.equals(types, subschema.types) && Objects.equals(properties, subschema.properties) && Objects.equals(itemsType, subschema.itemsType) && Objects.equals(enumValues, subschema.enumValues) && Objects.equals(javaType, subschema.javaType) && Objects.equals(constValue, subschema.constValue);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(types, properties, itemsType, enumValues, javaType);
+        return Objects.hash(types, properties, itemsType, enumValues, javaType, constValue);
     }
 
     @Override
@@ -145,6 +181,9 @@ public final class NormalSubschema implements Subschema {
         }
         if (javaType != null) {
             fields.add("\"x-javaType\":\"" + javaType + "\"");
+        }
+        if (constValue != null) {
+            fields.add("\"const\":\"" + constValue + "\"");
         }
         return "{" +
                 (inSelfReference ? "*" : "") + // FIXME: Remove eventually, just marks the inSelfReference items
