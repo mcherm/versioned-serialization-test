@@ -11,8 +11,18 @@ import com.mcherm.versionedserialization.objects.TypedV2a;
 import com.mcherm.versionedserialization.objects.TypedV2b;
 import com.mcherm.versionedserialization.objects.TypedV2c;
 import com.mcherm.versionedserialization.objects.MappedV1;
+import com.mcherm.versionedserialization.objects.PolymorphicV1;
+import com.mcherm.versionedserialization.objects.PolymorphicV2a;
+import com.mcherm.versionedserialization.objects.RecordV1;
+import com.mcherm.versionedserialization.objects.RecordV2a;
+import com.mcherm.versionedserialization.objects.RecordV2b;
+import com.mcherm.versionedserialization.objects.JsonPropV1;
+import com.mcherm.versionedserialization.objects.JsonPropV2a;
+import com.mcherm.versionedserialization.objects.JsonPropV2b;
 import com.mcherm.versionedserialization.objects.RenamedV1;
 import com.mcherm.versionedserialization.objects.RenamedV2a;
+import com.mcherm.versionedserialization.objects.contents.Circle;
+import com.mcherm.versionedserialization.objects.contents.Rectangle;
 import com.mcherm.versionedserialization.schemadiff.SchemaParser;
 import com.mcherm.versionedserialization.schemadiff.UnsupportedSchemaFeature;
 import com.mcherm.versionedserialization.schemadiff.schema.SchemaInfo;
@@ -214,6 +224,86 @@ public class MigratorTest {
                 "fullName", (UpdateContext ctx, String field) ->
                         ctx.getSourceValue("name").orElse(TextNode.valueOf(""))
         ));
+        // --- run test ---
+        assertMigration(source, expected, testUpdateRules);
+    }
+
+    // ===== Polymorphic tests: Jackson @JsonTypeInfo =====
+
+    // FIXME: Re-enable once SchemaParser supports anyOf/oneOf for polymorphic types
+    @org.junit.jupiter.api.Disabled
+    @Test
+    public void testPolymorphic_V1ToV2a_addTopLevelField() {
+        final PolymorphicV1 source = new PolymorphicV1();
+        source.label = "art";
+        final Circle c = new Circle();
+        c.color = "red";
+        c.radius = 5.0;
+        final Rectangle r = new Rectangle();
+        r.color = "blue";
+        r.width = 3.0;
+        r.height = 4.0;
+        source.shapes = List.of(c, r);
+        final PolymorphicV2a expected = new PolymorphicV2a();
+        expected.label = "art";
+        expected.shapes = List.of(c, r);
+        expected.artist = "";
+        final UpdateRules testUpdateRules = new UpdateRules(Map.of());
+        // --- run test ---
+        assertMigration(source, expected, testUpdateRules);
+    }
+
+    // ===== Record tests: Java records =====
+
+    @Test
+    public void testRecord_V1ToV2a_addField() {
+        final RecordV1 source = new RecordV1("Alice", 95, List.of("math"));
+        final RecordV2a expected = new RecordV2a("Alice", 95, List.of("math"), "");
+        final UpdateRules testUpdateRules = new UpdateRules(Map.of());
+        // --- run test ---
+        assertMigration(source, expected, testUpdateRules);
+    }
+
+    @Test
+    public void testRecord_V1ToV2b_removeField() {
+        final RecordV1 source = new RecordV1("Alice", 95, List.of("math"));
+        final RecordV2b expected = new RecordV2b("Alice", 95);
+        final UpdateRules testUpdateRules = new UpdateRules(Map.of());
+        // --- run test ---
+        assertMigration(source, expected, testUpdateRules);
+    }
+
+    // ===== JsonProperty tests: @JsonProperty field renaming =====
+    // The Victools schema uses Java field names (firstName) but the actual JSON document
+    // uses @JsonProperty names (first_name). The Migrator operates on the JSON using
+    // schema field names, so it will try to add/remove fields by the wrong names.
+
+    @Test
+    public void testJsonProp_V1ToV2a_addField() {
+        final JsonPropV1 source = new JsonPropV1();
+        source.firstName = "Alice";
+        source.lastName = "Smith";
+        source.age = 30;
+        final JsonPropV2a expected = new JsonPropV2a();
+        expected.firstName = "Alice";
+        expected.lastName = "Smith";
+        expected.age = 30;
+        expected.phoneNumber = "";
+        final UpdateRules testUpdateRules = new UpdateRules(Map.of());
+        // --- run test ---
+        assertMigration(source, expected, testUpdateRules);
+    }
+
+    @Test
+    public void testJsonProp_V1ToV2b_removeField() {
+        final JsonPropV1 source = new JsonPropV1();
+        source.firstName = "Alice";
+        source.lastName = "Smith";
+        source.age = 30;
+        final JsonPropV2b expected = new JsonPropV2b();
+        expected.firstName = "Alice";
+        expected.age = 30;
+        final UpdateRules testUpdateRules = new UpdateRules(Map.of());
         // --- run test ---
         assertMigration(source, expected, testUpdateRules);
     }

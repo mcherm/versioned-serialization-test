@@ -15,6 +15,14 @@ import com.mcherm.versionedserialization.objects.MappedV1;
 import com.mcherm.versionedserialization.objects.MappedV2a;
 import com.mcherm.versionedserialization.objects.MappedV2b;
 import com.mcherm.versionedserialization.objects.MappedV2c;
+import com.mcherm.versionedserialization.objects.PolymorphicV1;
+import com.mcherm.versionedserialization.objects.PolymorphicV2a;
+import com.mcherm.versionedserialization.objects.RecordV1;
+import com.mcherm.versionedserialization.objects.RecordV2a;
+import com.mcherm.versionedserialization.objects.RecordV2b;
+import com.mcherm.versionedserialization.objects.JsonPropV1;
+import com.mcherm.versionedserialization.objects.JsonPropV2a;
+import com.mcherm.versionedserialization.objects.JsonPropV2b;
 import com.mcherm.versionedserialization.objects.RenamedV1;
 import com.mcherm.versionedserialization.objects.RenamedV2a;
 import com.mcherm.versionedserialization.schemadiff.deltas.SchemaDeltas;
@@ -271,6 +279,65 @@ public class SchemaDifferTest {
                 Set.of(
                         new Expect("name", "Drop"),
                         new Expect("fullName", "DefaultingAdd")
+                )
+        );
+    }
+
+    // ===== Polymorphic tests: Jackson @JsonTypeInfo =====
+
+    // FIXME: Re-enable once SchemaParser supports anyOf/oneOf for polymorphic types
+    @org.junit.jupiter.api.Disabled
+    @Test
+    public void testPolymorphic_V1V2a_addTopLevelField() {
+        assertSchemaDeltas(
+                PolymorphicV1.class, PolymorphicV2a.class,
+                Set.of(
+                        new Expect("artist", "DefaultingAdd")
+                )
+        );
+    }
+
+    // ===== Record tests: Java records =====
+
+    @Test
+    public void testRecord_V1V2a_addField() {
+        assertSchemaDeltas(
+                RecordV1.class, RecordV2a.class,
+                Set.of(
+                        new Expect("grade", "DefaultingAdd")
+                )
+        );
+    }
+
+    @Test
+    public void testRecord_V1V2b_removeField() {
+        assertSchemaDeltas(
+                RecordV1.class, RecordV2b.class,
+                Set.of(
+                        new Expect("tags", "Drop")
+                )
+        );
+    }
+
+    // ===== JsonProperty tests: @JsonProperty field renaming =====
+    // With JacksonModule registered, Victools now correctly uses the @JsonProperty names.
+
+    @Test
+    public void testJsonProp_V1V2a_addField() {
+        assertSchemaDeltas(
+                JsonPropV1.class, JsonPropV2a.class,
+                Set.of(
+                        new Expect("phone_number", "DefaultingAdd")
+                )
+        );
+    }
+
+    @Test
+    public void testJsonProp_V1V2b_removeField() {
+        assertSchemaDeltas(
+                JsonPropV1.class, JsonPropV2b.class,
+                Set.of(
+                        new Expect("last_name", "Drop")
                 )
         );
     }
