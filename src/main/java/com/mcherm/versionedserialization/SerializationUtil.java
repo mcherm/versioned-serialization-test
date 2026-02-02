@@ -42,6 +42,16 @@ public class SerializationUtil {
     }
 
     /**
+     * This serializes an object to JSON, returning the JSON as a JsonNode.
+     *
+     * @param object the object to be serialized
+     * @return the JSON as a JsonNode
+     */
+    public static JsonNode serializeAsNode(final Object object) {
+        return objectMapper.valueToTree(object);
+    }
+
+    /**
      * This deserializes an object from JSON, returning the new object.
      *
      * @param serialized the JSON as a string

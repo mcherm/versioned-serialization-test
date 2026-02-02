@@ -18,6 +18,11 @@ public final class Drop extends Alteration {
     }
 
     @Override
+    public boolean requiresCustomization() {
+        return false; // Drop never requires custom rules!
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (!(o instanceof Drop drop)) return false;
         return super.equals(o) && Objects.equals(subschema, drop.subschema);
