@@ -4,6 +4,8 @@ import com.mcherm.versionedserialization.SerializationUtil;
 import com.mcherm.versionedserialization.objects.CustomSerializingV1;
 import com.mcherm.versionedserialization.objects.SimpleV1;
 import com.mcherm.versionedserialization.objects.SimpleV2a;
+import com.mcherm.versionedserialization.objects.SimpleV2b;
+import com.mcherm.versionedserialization.objects.SimpleV2c;
 import com.mcherm.versionedserialization.schemadiff.deltas.SchemaDeltas;
 import com.mcherm.versionedserialization.schemadiff.schema.SchemaInfo;
 import org.junit.jupiter.api.Test;
@@ -22,12 +24,30 @@ public class SchemaDifferTest {
     record Expect(String field, String effect) {}
 
     @Test
-    public void testSchemaDiffer() {
+    public void testSimple_V1V2a_addFieldThatDefaults() {
         assertSchemaDeltas(
                 SimpleV1.class, SimpleV2a.class,
                 Set.of(
                         new Expect("extra","DefaultingAdd")
                 )
+        );
+    }
+
+    @Test
+    public void testSimple_V1V2b_RemoveField() {
+        assertSchemaDeltas(
+                SimpleV1.class, SimpleV2b.class,
+                Set.of(
+                        new Expect("s","Drop")
+                )
+        );
+    }
+
+    @Test
+    public void testSimple_V1V2c_noChanges() {
+        assertSchemaDeltas(
+                SimpleV1.class, SimpleV2c.class,
+                Set.of()
         );
     }
 
